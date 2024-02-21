@@ -1,0 +1,13 @@
+{
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.10",
+  "postCreateCommand": "pip install -r requirements.txt && python setup.py",
+  "features": {
+  },
+  "forwardPorts": [
+    8501
+  ],
+  	// Container environment variables
+	"containerEnv": {
+    "CENSUS_API_KEY": "${localEnv:CENSUS_API_KEY}"
+	}
+}
