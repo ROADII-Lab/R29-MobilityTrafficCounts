@@ -14,7 +14,7 @@
 
 # Project Description
 
-### ROADII Use Case 25 - Traffic Incident Detection through ML methods
+### ROADII Use Case 29 - Mobility Traffic Counts
 
 - **Title:** High-Availability Traffic Count Estimation for Mobility Modeling, Planning Projects, and Environmental Impact Modeling. 
 - **Purpose and goals of the project:** This ROADII use case provides methods to geographically match traffic counting station data with prob-collected speed data on the National Highway System across the country to produce a training dataset for predicting roadway traffic volumes across the entire national highway system. The code provides basic neural network training capabilities as well as a user interface to easily load input data, pick input and target columns, and train a model. The model architecture in this repository was developed using the Traffic Monitoring and Analysis System traffic volume data produced and managed by FHWA and the National Performance Measurement Research Data Set speed data managed by RITIS. These traffic data sources are vizualized in the maps below:
