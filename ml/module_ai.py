@@ -24,7 +24,7 @@ class ai:
     model_size = 25                                             # number of parameters for the hidden network layer
     training_epochs = 1000                                     # default number of epochs to train the network for
     target_loss = 100                                             # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.10                                   # default network learning rate
+    training_learning_rate = 0.2                                   # default network learning rate
     test_interval = 100                          
 
     def __init__(self) -> None:
@@ -46,7 +46,6 @@ class ai:
     def format_training_data(self, dataframe):
         # formats features for input into the model
         # NOTE: this is not where the primary data features are created, that is performed within the data module itself.
-
         X = dataframe[self.features]
         y = dataframe[self.target]
 
@@ -154,48 +153,55 @@ class ai:
         criterion = nn.MSELoss()
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
         
-        # Initialize Plotting of Epoch and Loss
-        data = pd.DataFrame({'Epoch': [], 'Loss':[]})
-        chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')),
-                                        y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
-        alt_chart = st.altair_chart(chart, use_container_width=True)
-        # train the model
-        for epoch in range(epochs):
-            model.train()
-            optimizer.zero_grad()
-            outputs = model(x_train)
-            loss = criterion(outputs, y_train)
-            loss.backward()
-            optimizer.step()
+        # Place chart plotting epochs in a streamlit window
+        col3, col4 = st.columns([1,1])
+        with col4:
+            pass
+        with col3:
+            # Initialize Plotting of Epoch and Loss
+            data = pd.DataFrame({'Epoch': [], 'Loss':[]})
+            chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')),
+                                            y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
+            chart = chart.properties(title='Logarithmic Loss vs Epochs')
+            alt_chart = st.altair_chart(chart, use_container_width=False)
+            
+            # train the model
+            for epoch in range(epochs):
+                model.train()
+                optimizer.zero_grad()
+                outputs = model(x_train)
+                loss = criterion(outputs, y_train)
+                loss.backward()
+                optimizer.step()
 
-            # Create new data for this loop iteration
-            new_data = pd.DataFrame({'Epoch': [epoch], 'Loss' : [loss.item()]})
-            if epoch == 1:
-                data = new_data
-            else:
-                data = pd.concat([data, new_data], ignore_index=True) 
+                # Create new data for this loop iteration
+                new_data = pd.DataFrame({'Epoch': [epoch], 'Loss' : [loss.item()]})
+                if epoch == 1:
+                    data = new_data
+                else:
+                    data = pd.concat([data, new_data], ignore_index=True) 
 
-            # create chart and add to existing container in streamlit
-            chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')), 
-                                           y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
-            alt_chart.altair_chart(chart)
-            if (epoch+1) % 10 == 0:
-                print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item()}')
-            if (epoch+1) % self.test_interval == 0:
-                predictions, y_test, test_loss, test_accuracy = self.test(model, x_test, y_test)
-                # print(f'  Test Loss: {test_loss} - Test Accuracy: {test_accuracy}')
+                # create chart and add to existing container in streamlit
+                chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')), 
+                                            y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
+                alt_chart.altair_chart(chart)
+                if (epoch+1) % 10 == 0:
+                    print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item()}')
+                if (epoch+1) % self.test_interval == 0:
+                    predictions, y_test, test_loss, test_accuracy = self.test(model, x_test, y_test)
+                    # print(f'  Test Loss: {test_loss} - Test Accuracy: {test_accuracy}')
 
-                # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
-                if epoch+1 == self.test_interval:
-                    self.model_top_loss = test_loss
-                    self.model_top = copy.deepcopy(self.model)
-                if test_loss < self.model_top_loss:
-                    self.model_top = copy.deepcopy(self.model)
-                    self.model_top_loss = test_loss
-                    if test_loss <= self.target_loss:
-                        print("Early stopping!")
-                        self.model_save(self.model_top)
-                        return
+                    # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
+                    if epoch+1 == self.test_interval:
+                        self.model_top_loss = test_loss
+                        self.model_top = copy.deepcopy(self.model)
+                    if test_loss < self.model_top_loss:
+                        self.model_top = copy.deepcopy(self.model)
+                        self.model_top_loss = test_loss
+                        if test_loss <= self.target_loss:
+                            print("Early stopping!")
+                            self.model_save(self.model_top)
+                            return
         
         self.model_save(self.model_top)
 

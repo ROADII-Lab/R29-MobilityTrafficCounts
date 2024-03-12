@@ -8,6 +8,7 @@ import module_ai
 import module_data
 import module_census
 
+
 # helper functions / hooks for object calls
 def train_model(ai, normalized_df, in_cols, target_col):
     # setup training data
@@ -22,6 +23,13 @@ def train_model(ai, normalized_df, in_cols, target_col):
     ai.train(ai.model, x_train, y_train, x_test, y_test)
 
     return 
+
+def create_map(normalized_df, x_train, y_train, x_test, y_test):
+    print(x_test)
+    print(y_test)
+    print(x_train)
+    print(y_train)
+
 
 def test_model(ai, normalized_df, in_cols, target_col):
     # setup training / test data
@@ -40,6 +48,9 @@ def test_model(ai, normalized_df, in_cols, target_col):
             print("No model loaded!")
             return 0
     
+    # Generate and display Folium Map
+    create_map(normalized_df, x_train, y_train, x_test, y_test)
+
     return test_accuracy
 
 def find_string_index(alist, search_string):
@@ -81,18 +92,13 @@ st.dataframe(result_df[0:50])
 st.header("Normalized Training Data")
 st.dataframe(normalized_df[0:50])
 
-# setup a display of the census data
-st.header("Census Data")
-st.dataframe(census_df[0:10])
-
 #choose input features
-cols1 = normalized_df.columns
+cols1 = source_data.features_training_set
 in_cols = st.multiselect(label = "Choost input columns", options=cols1, default=source_data.features_training_set)
 
 # Target Col Dropdown
 cols2 = normalized_df.columns
 target_col = st.selectbox(label = 'Choose a target column', options= cols2, index=find_string_index(cols2, source_data.features_target))
-
 # UI buttons
 col1, col2 = st.columns(2)
 with col1:

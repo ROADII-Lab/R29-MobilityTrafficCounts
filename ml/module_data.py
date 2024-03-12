@@ -38,20 +38,22 @@ class data(object):
         self.dataset = None
         self.normalized_dataset = None
         self.prepared_dataset = None
+        self.calculated_columns = []
 
+        '''
         # setup data sources
         self.tmas = self.tmas_data()
         self.tmas.read()
         
         self.npmrds = self.npmrds_data()
         self.tmc = self.tmc_data()
-
+    '''
+        
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/NPMRDS_TMC_TMAS_NE.csv'
-
+        self.OUTPUT_FILE_PATH = r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
         # pre-defined features for input into the AI model
-        self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations
+        self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
                                 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
                                 'average_speed_All', # (int)
@@ -66,25 +68,26 @@ class data(object):
                                 'end_longitude', # (float)
                                 'miles', # (float)
                                 'f_system', ## numerical field to incorporate (int)
-                                'urban_code', ## numerical field to incorporate (int)
+                                #'urban_code', ## numerical field to incorporate (int)
                                 'aadt', # (int)
                                 'thrulanes_unidir', # (int)
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
-                                #'MONTH', # (int)
-                                #'DAY', # (int)
-                                #'HOUR', # (int)
+                                'MONTH', # (int)
+                                'DAY', # (int)
+                                'HOUR', # (int)
                                 'DAY_TYPE', ## text field to normalize
                                 'PEAKING', ## text field to normalize
                                 'URB_RURAL', ## text field to normalize
                                 'VOL', # (int)
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
                                 'HPMS_ALL', # (int)
-                                'NOISE_ALL' # (int)
+                                'NOISE_ALL', # (int)
+                                'Population_2022' # (int) population by county
                                 ]
         
-        self.features_training_set = ['tmc_code', # traffic monitoring station id, needed for groupby() operations
+        self.features_training_set = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                           
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
                                 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
                                 'average_speed_All', # (int)
@@ -99,7 +102,7 @@ class data(object):
                                 'end_longitude', # (float)
                                 'miles', # (float)
                                 'f_system', ## numerical field to incorporate (int)
-                                'urban_code', ## numerical field to incorporate (int)
+                                #'urban_code', ## numerical field to incorporate (int)
                                 'aadt', # (int)
                                 'thrulanes_unidir', # (int)
                                 'route_sign',
@@ -108,16 +111,17 @@ class data(object):
                                 #'MONTH', # (int)
                                 #'DAY', # (int)
                                 #'HOUR', # (int)
-                                'DAY_TYPE', ## text field to normalize
-                                'PEAKING', ## text field to normalize
-                                'URB_RURAL', ## text field to normalize
-                                'VOL', # (int)
+                                #'DAY_TYPE', ## text field to normalize
+                                #'PEAKING', ## text field to normalize
+                                #'URB_RURAL', ## text field to normalize
+                                #'VOL', # (int)
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
-                                'HPMS_ALL', # (int)
-                                'NOISE_ALL' # (int)
+                                #'HPMS_ALL', # (int)
+                                #'NOISE_ALL' # (int)
+                                'Population_2022' # (int) population by county
                                 ]
 
-        self.features_target = "NOISE_ALL"
+        self.features_target = "VOL"
 
     def join_and_save(self):
         # run the joins and then save the results to storage
@@ -136,7 +140,7 @@ class data(object):
             return self.join_and_save()
         else:
             try:
-                final_output = pd.read_csv(self.OUTPUT_FILE_PATH)
+                final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'})
                 print("Loading cached data...")
                 self.dataset = final_output
             except error as err:
@@ -182,10 +186,48 @@ class data(object):
 
     # AI-centric functions ----------------------------------------------------------------------------------------------------------------------
 
+    # Check if tmc code contains P, N, +, - and return 0 - 3 accordingly or -1 for none
+    def tmc_value(self, tmc_code):
+        tmc_code = str(tmc_code).lower()
+        if ('p' in tmc_code):
+            return 0
+        elif ('n' in tmc_code):
+            return 1
+        elif ('-' in tmc_code):
+            return 2
+        elif ('+' in tmc_code):
+            return 3
+        else:
+            return -1
+    
+    # Insert column based on code found in tmc_code, remove characters from tmc_code, convert to int
+    def tmc_norm(self):
+        self.normalized_dataset.insert(1, 'TMC_Value'
+                                       , self.normalized_dataset.apply(lambda row: self.tmc_value(row['tmc_code']), axis=1))
+        # Replace all non numerical characters in tmc_code, then convert column to int
+        self.normalized_dataset['tmc_code'] = self.normalized_dataset['tmc_code'].str.lower().str.replace('p', '').str.replace('n', '').str.replace('+', '').str.replace('-', '')
+        self.normalized_dataset['tmc_code'] = self.normalized_dataset['tmc_code'].astype(int)
+        # Add this value to calculated column name
+        self.calculated_columns.append('TMC_Value')
+
+    # Higher order function to add normalization to dataset through passed function
+    def add_normalization(self, func):
+        # If normalized dataset hasn't been created, create copy of dataset with feature columns
+        if (self.normalized_dataset is None):
+            self.normalized_dataset = self.dataset[self.features_column_names].copy()
+        # Run passed function
+        func()
+
+    # Apply all normalizations to dataset here by calling add_normalization for all normalization functions
+    def apply_normalization(self):
+        self.add_normalization(self.tmc_norm)
+
     def normalized(self):
+        
+        
         # modify data types to be normalized by the AI training data pre-processing steps
         self.normalized_dataset = self.dataset[self.features_column_names].copy()
-
+        self.apply_normalization()
         # format the timestamps
         # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
         
@@ -200,6 +242,7 @@ class data(object):
         self.normalized_dataset['active_start_date'] = self.normalized_dataset['active_start_date'].dt.tz_convert(None)
         self.normalized_dataset['active_start_date'] = pd.to_datetime(self.normalized_dataset['active_start_date']).view('int64') // 10**9
         
+        '''
         # TODO: add vectorization for string data
         # convert multiple-choice (i.e., equally weighted) string data fields into integer fields using Python enumerate
         #self.normalized_dataset['data_density_All'] = norm_multiple_choice(self.normalized_dataset['data_density_All'])
@@ -208,9 +251,13 @@ class data(object):
         self.normalized_dataset['DAY_TYPE'] = norm_multiple_choice(self.normalized_dataset['DAY_TYPE'])
         self.normalized_dataset['PEAKING'] = norm_multiple_choice(self.normalized_dataset['PEAKING'])
         self.normalized_dataset['URB_RURAL'] = norm_multiple_choice(self.normalized_dataset['URB_RURAL'])
-        
+        '''
         # kill any rows that contain null values TODO: Should modify this to replace values instead depending on what the value is...
         self.normalized_dataset = self.normalized_dataset.dropna()
+
+        # Add all calculated column to features training set and column names so they are included moving forward
+        self.features_column_names.extend(self.calculated_columns)
+        self.features_training_set.extend(self.calculated_columns)
 
         return self.normalized_dataset
     

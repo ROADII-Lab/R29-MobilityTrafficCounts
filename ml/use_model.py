@@ -38,11 +38,12 @@ cols1 = ['measurement_tstamp',
         'route_sign',
         'thrulanes',
         'zip',
+        'Population_2022'
         ]
 
-source_data.OUTPUT_FILE_PATH = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/NPMRDS_TMC_TMAS_NE.csv'
+source_data.OUTPUT_FILE_PATH = r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
 
-census_df = pd.DataFrame() #pd.DataFrame(census_data)
+#census_df = pd.DataFrame() #pd.DataFrame(census_data)
 if os.path.isfile("norm_data.pkl"):
     normalized_df = pickle.load(open("norm_data.pkl", "rb"))
 else:
@@ -52,5 +53,4 @@ else:
     pickle.dump(normalized_df, open("norm_data.pkl", "wb"))
 
 result = setup_funcs.train_model(ai, normalized_df, cols1, 'VOL')
-
 # TODO: calculate average percent diff between predictions and y_test 
