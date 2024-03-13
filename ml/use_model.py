@@ -18,10 +18,6 @@ ai = module_ai.ai()
 # init data module
 source_data = module_data.data()
 
-# init census data (using saved data for now)
-# census_dataobj = module_census.census_data()
-# census_data = census_dataobj.get_population_data_by_city(25)
-
 # setup data sources
 cols1 = ['measurement_tstamp',
         'average_speed_All',
@@ -43,14 +39,26 @@ cols1 = ['measurement_tstamp',
 
 source_data.OUTPUT_FILE_PATH = r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
 
-#census_df = pd.DataFrame() #pd.DataFrame(census_data)
+use_custom_cols = True # CHANGE TO TRUE IF USING COLUMNS ABOVE, OTHERWISE USING COLUMNS FROM module_data
+
+
+# IF USING UPDATED DATASET (any new columns calculated or selected)
+# make sure to delete existing norm_data.pkl otherwise old data will be loaded
 if os.path.isfile("norm_data.pkl"):
+    print("Loaded .pkl file")
     normalized_df = pickle.load(open("norm_data.pkl", "rb"))
 else:
     result_df = source_data.read()
     normalized_df = source_data.normalized()
     import pickle
     pickle.dump(normalized_df, open("norm_data.pkl", "wb"))
+
+# If using custom columns, add the calculated columns to the custom cols1
+# Otherwise, set columns equal to features training data set that already contains calculated_columns
+if (use_custom_cols):
+    cols1.extend(source_data.calculated_columns)
+else :
+    cols1 = source_data.features_training_set
 
 result = setup_funcs.train_model(ai, normalized_df, cols1, 'VOL')
 # TODO: calculate average percent diff between predictions and y_test 
