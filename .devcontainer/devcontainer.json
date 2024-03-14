@@ -1,10 +1,14 @@
 {
   "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.10",
-  "postCreateCommand": "pip install -r requirements.txt && python setup.py",
+  "postCreateCommand": "sudo apt update && sudo apt upgrade -y && curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit && pip install -r requirements.txt && python setup.py",
   "features": {
   },
   "forwardPorts": [
     8501
+  ],
+  "runArgs": [
+    "--gpus",
+    "all"
   ],
   	// Container environment variables
 	"containerEnv": {
