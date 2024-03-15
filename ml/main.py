@@ -24,13 +24,6 @@ def train_model(ai, normalized_df, in_cols, target_col):
 
     return 
 
-def create_map(normalized_df, x_train, y_train, x_test, y_test):
-    print(x_test)
-    print(y_test)
-    print(x_train)
-    print(y_train)
-
-
 def test_model(ai, normalized_df, in_cols, target_col):
     # setup training / test data
     ai.features = in_cols
@@ -47,9 +40,6 @@ def test_model(ai, normalized_df, in_cols, target_col):
         else:
             print("No model loaded!")
             return 0
-    
-    # Generate and display Folium Map
-    create_map(normalized_df, x_train, y_train, x_test, y_test)
 
     return test_accuracy
 

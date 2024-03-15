@@ -47,11 +47,11 @@ class data(object):
         
         self.npmrds = self.npmrds_data()
         self.tmc = self.tmc_data()
-    '''
+        '''
         
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
+        self.OUTPUT_FILE_PATH = r'C:\Users\Jason.Lu\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
@@ -59,31 +59,31 @@ class data(object):
                                 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
-                                #'data_density_All', ## text field to normalize
-                                #'data_density_Pass', ## text field to normalize
-                                #'data_density_Truck', ## text field to normalize
+                                'data_density_All', ## text field to normalize
+                                'data_density_Pass', ## text field to normalize
+                                'data_density_Truck', ## text field to normalize
                                 'start_latitude', # (float)
                                 'start_longitude', # (float)
                                 'end_latitude', # (float)
                                 'end_longitude', # (float)
                                 'miles', # (float)
                                 'f_system', ## numerical field to incorporate (int)
-                                #'urban_code', ## numerical field to incorporate (int)
+                                'urban_code', ## numerical field to incorporate (int)
                                 'aadt', # (int)
                                 'thrulanes_unidir', # (int)
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
-                                'MONTH', # (int)
-                                'DAY', # (int)
-                                'HOUR', # (int)
-                                'DAY_TYPE', ## text field to normalize
-                                'PEAKING', ## text field to normalize
-                                'URB_RURAL', ## text field to normalize
+                                #'MONTH', # (int)
+                                #'DAY', # (int)
+                                #'HOUR', # (int)
+                                #'DAY_TYPE', ## text field to normalize
+                                #'PEAKING', ## text field to normalize
+                                #'URB_RURAL', ## text field to normalize
                                 'VOL', # (int)
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
-                                'HPMS_ALL', # (int)
-                                'NOISE_ALL', # (int)
+                                #'HPMS_ALL', # (int)
+                                #'NOISE_ALL', # (int)
                                 'Population_2022' # (int) population by county
                                 ]
         
@@ -93,16 +93,16 @@ class data(object):
                                 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
-                                #'data_density_All', ## text field to normalize
-                                #'data_density_Pass', ## text field to normalize
-                                #'data_density_Truck', ## text field to normalize
+                                'data_density_All', ## text field to normalize
+                                'data_density_Pass', ## text field to normalize
+                                'data_density_Truck', ## text field to normalize
                                 'start_latitude', # (float)
                                 'start_longitude', # (float)
                                 'end_latitude', # (float)
                                 'end_longitude', # (float)
                                 'miles', # (float)
                                 'f_system', ## numerical field to incorporate (int)
-                                #'urban_code', ## numerical field to incorporate (int)
+                                'urban_code', ## numerical field to incorporate (int)
                                 'aadt', # (int)
                                 'thrulanes_unidir', # (int)
                                 'route_sign',
@@ -224,40 +224,23 @@ class data(object):
 
     def normalized(self):
         
+        # adding time before/after columns
+        self.prepared()
         
         # modify data types to be normalized by the AI training data pre-processing steps
-        self.normalized_dataset = self.dataset[self.features_column_names].copy()
+        self.normalized_dataset = self.prepared_dataset[self.features_column_names].copy()
         self.apply_normalization()
         # format the timestamps
         # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
-        
-        # sort the data only by timestamp
-        self.normalized_dataset.sort_values('measurement_tstamp', inplace=True)
-        self.normalized_dataset['measurement_tstamp'] = pd.to_datetime(self.normalized_dataset['measurement_tstamp'], errors='coerce')
-        self.normalized_dataset['measurement_tstamp'] = self.normalized_dataset['measurement_tstamp'].interpolate(method='linear')
-        self.normalized_dataset['measurement_tstamp'] = pd.to_datetime(self.normalized_dataset['measurement_tstamp']).view('int64') // 10**9
-        
-        # convert 'active_start_date' from (yyyy-mm-dd hh:mm:ss +- time zone) to integer seconds UTC
-        self.normalized_dataset['active_start_date'] = pd.to_datetime(self.normalized_dataset['active_start_date'], errors='coerce')
-        self.normalized_dataset['active_start_date'] = self.normalized_dataset['active_start_date'].dt.tz_convert(None)
-        self.normalized_dataset['active_start_date'] = pd.to_datetime(self.normalized_dataset['active_start_date']).view('int64') // 10**9
-        
-        '''
-        # TODO: add vectorization for string data
-        # convert multiple-choice (i.e., equally weighted) string data fields into integer fields using Python enumerate
-        #self.normalized_dataset['data_density_All'] = norm_multiple_choice(self.normalized_dataset['data_density_All'])
-        #self.normalized_dataset['data_density_Pass'] = norm_multiple_choice(self.normalized_dataset['data_density_Pass'])
-        #self.normalized_dataset['data_density_Truck'] = norm_multiple_choice(self.normalized_dataset['data_density_Truck'])
-        self.normalized_dataset['DAY_TYPE'] = norm_multiple_choice(self.normalized_dataset['DAY_TYPE'])
-        self.normalized_dataset['PEAKING'] = norm_multiple_choice(self.normalized_dataset['PEAKING'])
-        self.normalized_dataset['URB_RURAL'] = norm_multiple_choice(self.normalized_dataset['URB_RURAL'])
-        '''
+
         # kill any rows that contain null values TODO: Should modify this to replace values instead depending on what the value is...
         self.normalized_dataset = self.normalized_dataset.dropna()
 
         # Add all calculated column to features training set and column names so they are included moving forward
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)
+        
+        self.normalized_dataset = self.normalized_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
 
         return self.normalized_dataset
     
@@ -265,11 +248,32 @@ class data(object):
         # modify data types - extend each data entry to +/- one time increment
         #   time increment = 1 hour for data within each traffic station
         # this is a pre-processing step before AI training
-        self.prepared_dataset = self.normalized_dataset[self.features_column_names].copy()
+        self.prepared_dataset = self.dataset[self.features_column_names].copy()
         
         # sort the data i) by traffic station id; ii) then by timestamp
         #   (placeholder for more sorting criteria...)
         self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','measurement_tstamp'],ascending=[True,True])
+        
+        # sort the data only by timestamp
+        self.prepared_dataset.sort_values('measurement_tstamp', inplace=True)
+        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp'], errors='coerce')
+        self.prepared_dataset['measurement_tstamp'] = self.prepared_dataset['measurement_tstamp'].interpolate(method='linear')
+        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).view('int64') // 10**9
+        
+        # convert 'active_start_date' from (yyyy-mm-dd hh:mm:ss +- time zone) to integer seconds UTC
+        self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date'], errors='coerce')
+        self.prepared_dataset['active_start_date'] = self.prepared_dataset['active_start_date'].dt.tz_convert(None)
+        self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date']).view('int64') // 10**9
+        
+        # TODO: add vectorization for string data
+        # convert multiple-choice (i.e., equally weighted) string data fields into integer fields using Python enumerate
+        self.prepared_dataset['data_density_All'] = norm_multiple_choice(self.prepared_dataset['data_density_All'])
+        self.prepared_dataset['data_density_Pass'] = norm_multiple_choice(self.prepared_dataset['data_density_Pass'])
+        self.prepared_dataset['data_density_Truck'] = norm_multiple_choice(self.prepared_dataset['data_density_Truck'])
+        #self.prepared_dataset['DAY_TYPE'] = norm_multiple_choice(self.prepared_dataset['DAY_TYPE'])
+        #self.prepared_dataset['PEAKING'] = norm_multiple_choice(self.prepared_dataset['PEAKING'])
+        #self.prepared_dataset['URB_RURAL'] = norm_multiple_choice(self.prepared_dataset['URB_RURAL'])
+		   # capitalized fields are from the TMAS
         
         # create a "before" and an "after" dataframe representing shift by -/+ one time increment
         df_before = self.prepared_dataset.groupby(by=['tmc_code']).shift(periods=-1)
@@ -279,89 +283,18 @@ class data(object):
         #df_after = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
         
-        # ------------------------------------------------------
-        # insert the time-shifted columns
-        # measurement_tstamp - plus/minus one time increment
-        self.prepared_dataset.insert(1,"measurement_tstamp_before",df_before['measurement_tstamp'])
-        self.prepared_dataset.insert(3,"measurement_tstamp_after",df_after['measurement_tstamp'])
+        for col in self.prepared_dataset.columns:
+            if (not col.isupper() and col!="tmc_code"):
+                col_name_before = col+"_before"
+                col_name_after = col+"_after"
+                self.prepared_dataset.insert(len(self.prepared_dataset.columns), col_name_before, df_before[col])
+                self.prepared_dataset.insert(len(self.prepared_dataset.columns), col_name_after, df_after[col])
+                self.calculated_columns.append(col_name_before)
+                self.calculated_columns.append(col_name_after)
         
-        # active_start_date - plus/minus one time increment
-        self.prepared_dataset.insert(4,"active_start_date_before",df_before['active_start_date'])
-        self.prepared_dataset.insert(6,"active_start_date_after",df_after['active_start_date'])
-        
-        ### average_speed_All - varies with time
-        self.prepared_dataset.insert(7,"average_speed_All_before",df_before['average_speed_All'])
-        self.prepared_dataset.insert(9,"average_speed_All_after",df_after['average_speed_All'])
-        
-        ### speed_All - varies with time
-        self.prepared_dataset.insert(10,"speed_All_before",df_before['speed_All'])
-        self.prepared_dataset.insert(12,"speed_All_after",df_after['speed_All'])
-        
-        ### travel_time_seconds_All - varies with time
-        self.prepared_dataset.insert(13,"travel_time_seconds_All_before",df_before['travel_time_seconds_All'])
-        self.prepared_dataset.insert(15,"travel_time_seconds_All_after",df_after['travel_time_seconds_All'])
-        
-        ### start_latitude - varies with time
-        self.prepared_dataset.insert(16,"start_latitude_before",df_before['start_latitude'])
-        self.prepared_dataset.insert(18,"start_latitude_after",df_after['start_latitude'])
-        
-        ### start_longitude - varies with time
-        self.prepared_dataset.insert(19,"start_longitude_before",df_before['start_longitude'])
-        self.prepared_dataset.insert(21,"start_longitude_after",df_after['start_longitude'])
-        
-        ### end_latitude - varies with time
-        self.prepared_dataset.insert(22,"end_latitude_before",df_before['end_latitude'])
-        self.prepared_dataset.insert(24,"end_latitude_after",df_after['end_latitude'])
-        
-        ### end_longitude - varies with time
-        self.prepared_dataset.insert(25,"end_longitude_before",df_before['end_longitude'])
-        self.prepared_dataset.insert(27,"end_longitude_after",df_after['end_longitude'])
-        
-        ### miles - varies with time
-        self.prepared_dataset.insert(28,"miles_before",df_before['miles'])
-        self.prepared_dataset.insert(30,"miles_after",df_after['miles'])
-        
-        # f_system - road type is constant
-        self.prepared_dataset.insert(31,"f_system_before",df_before['f_system'])
-        self.prepared_dataset.insert(33,"f_system_after",df_after['f_system'])
-        
-        # urban_code - urban code is constant
-        self.prepared_dataset.insert(34,"urban_code_before",df_before['urban_code'])
-        self.prepared_dataset.insert(36,"urban_code_after",df_after['urban_code'])
-        
-        ### aadt - varies with time
-        self.prepared_dataset.insert(37,"aadt_before",df_before['aadt'])
-        self.prepared_dataset.insert(39,"aadt_after",df_after['aadt'])
-        
-        # thrulanes_unidir - number of lanes is constant
-        self.prepared_dataset.insert(40,"thrulanes_unidir_before",df_before['thrulanes_unidir'])
-        self.prepared_dataset.insert(42,"thrulanes_unidir_after",df_after['thrulanes_unidir'])
-        
-        # route_sign - route signing type is constant
-        self.prepared_dataset.insert(43,"route_sign_before",df_before['route_sign'])
-        self.prepared_dataset.insert(45,"route_sign_after",df_after['route_sign'])
-        
-        # thrulanes - number of lanes is constant
-        self.prepared_dataset.insert(46,"thrulanes_before",df_before['thrulanes'])
-        self.prepared_dataset.insert(48,"thrulanes_after",df_after['thrulanes'])
-        
-        # zip - zip code is constant
-        self.prepared_dataset.insert(49,"zip_before",df_before['zip'])
-        self.prepared_dataset.insert(51,"zip_after",df_after['zip'])
-        
-        # DAY_TYPE - day type is constant (each piece of input data is one hour)
-        self.prepared_dataset.insert(52,"DAY_TYPE_before",df_before['DAY_TYPE'])
-        self.prepared_dataset.insert(54,"DAY_TYPE_after",df_after['DAY_TYPE'])
-        
-        # PEAKING - peaking direction is constant
-        self.prepared_dataset.insert(55,"PEAKING_before",df_before['PEAKING'])
-        self.prepared_dataset.insert(57,"PEAKING_after",df_after['PEAKING'])
-        
-        # URB_RURAL - urban rural classification is constant
-        self.prepared_dataset.insert(58,"URB_RURAL_before",df_before['URB_RURAL'])
-        self.prepared_dataset.insert(60,"URB_RURAL_after",df_after['URB_RURAL'])
-        
-        breakpoint()
+        self.features_column_names.extend(self.calculated_columns)
+        self.features_training_set.extend(self.calculated_columns)  
+        self.calculated_columns = []
         
         return self.prepared_dataset
     
