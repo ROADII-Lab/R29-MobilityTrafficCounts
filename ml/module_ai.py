@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from datetime import datetime
 from sklearn.model_selection import train_test_split
@@ -19,16 +20,20 @@ class ai:
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 100                                        # placeholding for the current top model's test loss
-    model_filename_root = "_model"                              # default model filename
-    model_filename = None
-    model_size = 25                                             # number of parameters for the hidden network layer
-    training_epochs = 1000                                     # default number of epochs to train the network for
-    target_loss = 100                                             # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.2                                   # default network learning rate
-    test_interval = 100                          
+    model_filename_root = "../models/_model"                    # default model filename
+    model_filename = None                                       # placeholder for model filename
+    model_size = 100                                             # number of parameters for the hidden network layer
+    training_epochs = 2500                                      # default number of epochs to train the network for
+    weight_decay = 0.01                                         # optimizer weight decay                                                
+    target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
+    training_learning_rate = 0.02                                # default network learning rate
+    test_interval = 500                          
 
     def __init__(self) -> None:
-        pass
+        
+        # setup GPU
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Using ", self.device)
 
     def get_model_list(self, path, extension='pkl'):
         # returns a list of models in the specified path
@@ -73,10 +78,10 @@ class ai:
         X_test = scaler.transform(X_test)
 
         # Convert the data to PyTorch tensors
-        X_train_tensor = torch.tensor(X_train.astype(np.float32))
-        y_train_tensor = torch.tensor(y_train.values.astype(np.float32)).view(-1, 1)
-        X_test_tensor = torch.tensor(X_test.astype(np.float32))
-        y_test_tensor = torch.tensor(y_test.values.astype(np.float32)).view(-1, 1)
+        X_train_tensor = torch.tensor(X_train.astype(np.float32)).to(self.device)
+        y_train_tensor = torch.tensor(y_train.values.astype(np.float32)).view(-1, 1).to(self.device)
+        X_test_tensor = torch.tensor(X_test.astype(np.float32)).to(self.device)
+        y_test_tensor = torch.tensor(y_test.values.astype(np.float32)).view(-1, 1).to(self.device)
 
         return X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor
     
@@ -84,6 +89,7 @@ class ai:
         # Initialize the neural network
         input_size = x_dim.shape[1]
         self.model = LinearNN(input_size, self.model_size)
+        self.model.to(self.device)
         return 
     
     def model_load(self, x_dim, filename=model_filename):
@@ -91,6 +97,7 @@ class ai:
         self.model_init(x_dim)
         print("Loading model:", self.model_filename)
         if self.model.load(self.model_filename):
+            self.model.to(self.device)
             return True
         else:
             return False
@@ -151,7 +158,7 @@ class ai:
         # setup optimizer
         # Define the loss function and optimizer
         criterion = nn.MSELoss()
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=self.weight_decay)
         
         # Place chart plotting epochs in a streamlit window
         col3, col4 = st.columns([1,1])
@@ -168,9 +175,9 @@ class ai:
             # train the model
             for epoch in range(epochs):
                 model.train()
-                optimizer.zero_grad()
                 outputs = model(x_train)
                 loss = criterion(outputs, y_train)
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -203,7 +210,9 @@ class ai:
                             self.model_save(self.model_top)
                             return
         
+        # save and make sure we set the model to the best weights
         self.model_save(self.model_top)
+        self.model = self.model_top
 
     def test(self, model, x_test, y_test):
         # setup loss function
@@ -228,18 +237,26 @@ class ai:
             predicted_counts = model(segments_without_counts_tensor)
             return predicted_counts
 
-# Very simple neural network!
+# *Somewhat* simple neural network!
 class LinearNN(nn.Module):
     def __init__(self, input_size, layer_size):
         super(LinearNN, self).__init__()
-        self.fc1 = nn.Linear(int(input_size), int(layer_size/2))          # First layer with layer_size neurons
-        self.fc2 = nn.Linear(int(layer_size/2), int(layer_size/4))          # Second layer with layer_size neurons
-        self.fc3 = nn.Linear(int(layer_size/4), 1)                            # Output layer
+        self.fc1 = nn.Linear(int(input_size), int(layer_size))
+        self.bn1 = nn.BatchNorm1d(int(layer_size))
+        self.fc2 = nn.Linear(int(layer_size), int(layer_size))
+        self.bn2 = nn.BatchNorm1d(int(layer_size))
+        self.fc3 = nn.Linear(int(layer_size), int(layer_size//2))
+        self.bn3 = nn.BatchNorm1d(int(layer_size//2))
+        self.fc4 = nn.Linear(int(layer_size//2), int(layer_size//2))
+        self.bn4 = nn.BatchNorm1d(int(layer_size//2))
+        self.fc5 = nn.Linear(int(layer_size//2), 1)
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = self.fc3(x)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.bn3(self.fc3(x)))
+        x = F.relu(self.bn4(self.fc4(x)))
+        x = self.fc5(x)  # No activation function here as it's a regression task
         return x
     
     # Function to save the model
@@ -264,7 +281,7 @@ class LinearNN(nn.Module):
             self.eval()
             print(f"Model loaded from {filename}")
             return True
-        except e:
+        except Exception as e:
             print(e)
             return False
     
