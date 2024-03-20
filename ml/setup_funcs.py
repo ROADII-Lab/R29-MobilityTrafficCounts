@@ -30,16 +30,16 @@ def test_model(ai, normalized_df, in_cols, target_col):
 
     # load the model or use a model that's already loaded
     if ai.model != None:
-        ai.test(ai.model, x_test, y_test)
+        predictions, y_test, test_loss, accuracy = ai.test(ai.model, x_test, y_test)
     else:
         if(ai.model_load(x_test)):
-            predictions, y_test, test_loss = ai.test(ai.model, x_test, y_test)
+            predictions, y_test, test_loss, accuracy = ai.test(ai.model, x_test, y_test)
             
         else:
             print("No model loaded!")
             return 0
     
-    return predictions, y_test, test_loss
+    return predictions, y_test, test_loss, accuracy
 
 def setup():
     # init ai module

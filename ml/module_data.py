@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-
 # common functions
 def merge(dataframe1, dataframe2, key):
     # Merge the datasets based on a common key (e.g., TMC Code)
@@ -40,18 +39,16 @@ class data(object):
         self.prepared_dataset = None
         self.calculated_columns = []
 
-        '''
         # setup data sources
-        self.tmas = self.tmas_data()
-        self.tmas.read()
+        # self.tmas = self.tmas_data()
+        # self.tmas.read()
         
-        self.npmrds = self.npmrds_data()
-        self.tmc = self.tmc_data()
-        '''
+        # self.npmrds = self.npmrds_data()
+        # self.tmc = self.tmc_data()
         
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'C:\Users\Jason.Lu\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_NE_C.csv'
+        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_NE_C.csv'
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
@@ -74,15 +71,15 @@ class data(object):
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
-                                #'MONTH', # (int)
-                                #'DAY', # (int)
-                                #'HOUR', # (int)
-                                #'DAY_TYPE', ## text field to normalize
+                                # 'MONTH', # (int)
+                                # 'DAY', # (int)
+                                # 'HOUR', # (int)
+                                # 'DAY_TYPE', ## text field to normalize
                                 #'PEAKING', ## text field to normalize
                                 #'URB_RURAL', ## text field to normalize
                                 'VOL', # (int)
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
-                                #'HPMS_ALL', # (int)
+                                # 'HPMS_ALL', # (int)
                                 #'NOISE_ALL', # (int)
                                 'Population_2022' # (int) population by county
                                 ]
@@ -108,15 +105,15 @@ class data(object):
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
-                                #'MONTH', # (int)
-                                #'DAY', # (int)
-                                #'HOUR', # (int)
-                                #'DAY_TYPE', ## text field to normalize
+                                # 'MONTH', # (int)
+                                # 'DAY', # (int)
+                                # 'HOUR', # (int)
+                                # 'DAY_TYPE', ## text field to normalize
                                 #'PEAKING', ## text field to normalize
                                 #'URB_RURAL', ## text field to normalize
                                 #'VOL', # (int)
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
-                                #'HPMS_ALL', # (int)
+                                # 'HPMS_ALL', # (int)
                                 #'NOISE_ALL' # (int)
                                 'Population_2022' # (int) population by county
                                 ]
@@ -140,10 +137,11 @@ class data(object):
             return self.join_and_save()
         else:
             try:
+                print(self.OUTPUT_FILE_PATH)
                 final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'})
                 print("Loading cached data...")
                 self.dataset = final_output
-            except error as err:
+            except Exception as err:
                 print(str(err))
                 final_output = self.join_and_save()
 
