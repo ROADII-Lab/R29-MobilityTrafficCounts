@@ -14,6 +14,8 @@ ai = module_ai.ai()
 
 # init data module
 source_data = module_data.data()
+# Normalization Functions - DO NOT CHANGE FOR FUTURE USE
+source_data.norm_functions = ['tmc_norm', 'tstamp_norm', 'startdate_norm', 'density_norm', 'time_before_after']
 
 # setup data sources
 cols1 = ['measurement_tstamp',

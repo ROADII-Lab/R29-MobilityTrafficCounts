@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from math import radians, sin, cos, acos
 
 # common functions
 def merge(dataframe1, dataframe2, key):
@@ -26,7 +27,42 @@ def norm_multiple_choice(list1):
     # d = {x: i for i, x in enumerate(sorted(set(list1)))} # sorting causes an error, cannot quantitativetly compare a string to a blank
     d = {x: i for i, x in enumerate(set(list1))}
     return [d[s] for s in list1]
-        
+
+# HELPER FUNCTIONS TO CALCULATED nearest_Vol
+def distance(lat1, lon1, lat2, lon2):
+    earth_radius = 6371  # Earth radius in kilometers (you can adjust this value)
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1) * cos(lat2) * sin(dlon / 2) * sin(dlon / 2)
+    c = 2 * acos(min(1, a))  # Limit acos value to be between -1 and 1
+    distance = earth_radius * c
+
+    return distance 
+
+def calculate_vol(df_group):
+  # Iterate through each row and find the minimum distance
+  for idx, row in df_group.iterrows():
+    min_distance = float('inf') #starting at very large number
+    nearest_vol = None
+    found_match = False  # Flag to track if a match is found
+    for inner_idx, inner_row in df_group.iterrows():
+      if idx != inner_idx: #excluding considering itself as a match
+        dist = distance(row['start_latitude'], row['start_longitude'], 
+                                         inner_row['start_latitude'], inner_row['start_longitude'])
+        if dist < min_distance:
+          min_distance = dist
+          nearest_vol = inner_row['VOL']
+          found_match = True  # Set flag if a match is found
+    if not found_match:  # Check if no match was found
+      nearest_vol = -1  # Assign -1 if no match
+    row['nearest_VOL'] = nearest_vol
+  return df_group       
 
 class data(object):
     # class object that handles pre-processing of various data sources
@@ -200,89 +236,54 @@ class data(object):
     
     # Insert column based on code found in tmc_code, remove characters from tmc_code, convert to int
     def tmc_norm(self):
-        self.normalized_dataset.insert(1, 'TMC_Value'
-                                       , self.normalized_dataset.apply(lambda row: self.tmc_value(row['tmc_code']), axis=1))
+        self.prepared_dataset.insert(1, 'TMC_Value'
+                                       , self.prepared_dataset.apply(lambda row: self.tmc_value(row['tmc_code']), axis=1))
         # Replace all non numerical characters in tmc_code, then convert column to int
-        self.normalized_dataset['tmc_code'] = self.normalized_dataset['tmc_code'].str.lower().str.replace('p', '').str.replace('n', '').str.replace('+', '').str.replace('-', '')
-        self.normalized_dataset['tmc_code'] = self.normalized_dataset['tmc_code'].astype(int)
+        self.prepared_dataset['tmc_code'] = self.prepared_dataset['tmc_code'].str.lower().str.replace('p', '').str.replace('n', '').str.replace('+', '').str.replace('-', '')
+        self.prepared_dataset['tmc_code'] = self.prepared_dataset['tmc_code'].astype(int)
         # Add this value to calculated column name
         self.calculated_columns.append('TMC_Value')
 
-    # Higher order function to add normalization to dataset through passed function
-    def add_normalization(self, func):
-        # If normalized dataset hasn't been created, create copy of dataset with feature columns
-        if (self.normalized_dataset is None):
-            self.normalized_dataset = self.dataset[self.features_column_names].copy()
-        # Run passed function
-        func()
-
-    # Apply all normalizations to dataset here by calling add_normalization for all normalization functions
-    def apply_normalization(self):
-        self.add_normalization(self.tmc_norm)
-
-    def normalized(self):
-        
-        # adding time before/after columns
-        self.prepared()
-        
-        # modify data types to be normalized by the AI training data pre-processing steps
-        self.normalized_dataset = self.prepared_dataset[self.features_column_names].copy()
-        self.apply_normalization()
-        # format the timestamps
-        # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
-
-        # kill any rows that contain null values TODO: Should modify this to replace values instead depending on what the value is...
-        self.normalized_dataset = self.normalized_dataset.dropna()
-
-        # Add all calculated column to features training set and column names so they are included moving forward
-        self.features_column_names.extend(self.calculated_columns)
-        self.features_training_set.extend(self.calculated_columns)
-        
-        self.normalized_dataset = self.normalized_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
-
-        return self.normalized_dataset
-    
-    def prepared(self):
-        # modify data types - extend each data entry to +/- one time increment
-        #   time increment = 1 hour for data within each traffic station
-        # this is a pre-processing step before AI training
-        self.prepared_dataset = self.dataset[self.features_column_names].copy()
-        
-        # sort the data i) by traffic station id; ii) then by timestamp
-        #   (placeholder for more sorting criteria...)
-        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','measurement_tstamp'],ascending=[True,True])
-        
+    # Function to normalize measurement_tstamp
+    def tstamp_norm(self):
         # sort the data only by timestamp
         self.prepared_dataset.sort_values('measurement_tstamp', inplace=True)
+        # format the timestamps
+        # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
         self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp'], errors='coerce')
         self.prepared_dataset['measurement_tstamp'] = self.prepared_dataset['measurement_tstamp'].interpolate(method='linear')
         self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).view('int64') // 10**9
-        
+
+    # Function to normalize active_start_date
+    def startdate_norm(self):
         # convert 'active_start_date' from (yyyy-mm-dd hh:mm:ss +- time zone) to integer seconds UTC
         self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date'], errors='coerce')
         self.prepared_dataset['active_start_date'] = self.prepared_dataset['active_start_date'].dt.tz_convert(None)
         self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date']).view('int64') // 10**9
-        
-        # TODO: add vectorization for string data
+
+
+    # Function to normalize data_density_XXXX
+    def density_norm(self):
         # convert multiple-choice (i.e., equally weighted) string data fields into integer fields using Python enumerate
         self.prepared_dataset['data_density_All'] = norm_multiple_choice(self.prepared_dataset['data_density_All'])
         self.prepared_dataset['data_density_Pass'] = norm_multiple_choice(self.prepared_dataset['data_density_Pass'])
         self.prepared_dataset['data_density_Truck'] = norm_multiple_choice(self.prepared_dataset['data_density_Truck'])
-        #self.prepared_dataset['DAY_TYPE'] = norm_multiple_choice(self.prepared_dataset['DAY_TYPE'])
-        #self.prepared_dataset['PEAKING'] = norm_multiple_choice(self.prepared_dataset['PEAKING'])
-        #self.prepared_dataset['URB_RURAL'] = norm_multiple_choice(self.prepared_dataset['URB_RURAL'])
-		   # capitalized fields are from the TMAS
-        
+
+     # Creates time before and after datasets in the prepared_dataset
+    def time_before_after(self):
+        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
         # create a "before" and an "after" dataframe representing shift by -/+ one time increment
-        df_before = self.prepared_dataset.groupby(by=['tmc_code']).shift(periods=-1)
+        df_before = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value']).shift(periods=-1)
         #df_before = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=-1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
-        df_after = self.prepared_dataset.groupby(by=['tmc_code']).shift(periods=1)
+        df_after = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value']).shift(periods=1)
         #df_after = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
-        
+        #Columns to exclude from time before/after
+        excluded_columns = ['tmc_code', 'aadt', 'TMC_Value', 'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'f_system', 'urban_code', 'thrulanes_unidir', 'route_sign', 'thrulanes', 'zip', 'Population_2022']
+        # Loop through all columns not uppercase and not in excluded_columns and create a before/after column
         for col in self.prepared_dataset.columns:
-            if (not col.isupper() and col!="tmc_code"):
+            if (not col.isupper() and col not in excluded_columns):
                 col_name_before = col+"_before"
                 col_name_after = col+"_after"
                 self.prepared_dataset.insert(len(self.prepared_dataset.columns), col_name_before, df_before[col])
@@ -290,11 +291,48 @@ class data(object):
                 self.calculated_columns.append(col_name_before)
                 self.calculated_columns.append(col_name_after)
         
+        """
+        This function modifies the class variable 'self.prepared_dataset' by adding 
+        a new column 'nearest_VOL' containing the VOL value of the nearest point 
+        based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
+        start_longitude.
+        """
+    def calculate_nearest_vol(self):
+        # Group by the three primary columns
+        grouped_df = self.prepared_dataset.groupby(['measurement_tstamp', 'TMC_Value', 'f_system'])
+        # Apply the function to each group and update the dataframe in-place
+        self.prepared_dataset = grouped_df.apply(calculate_vol).reset_index()
+        self.calculated_columns.append('nearest_VOL')
+
+    # Apply all normalizations to dataset here by looping through self.norm_functions and calling all (ORDER MATTERS)
+    def apply_normalization(self):
+        # sort the data i) by road link TMC id; ii) then by timestamp
+        self.prepared_dataset = self.dataset[self.features_column_names].copy()
+        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','measurement_tstamp'],ascending=[True,True])
+        for function_name in self.norm_functions:
+            method = getattr(self, function_name)
+            if callable(method):
+                method()
+
+        # Update column names and training set to include all calculated columns, then reset calculated columns
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)  
         self.calculated_columns = []
+
+    def normalized(self):
+        # Call apply_normalization to run all normalization functions (that modify the prepared dataset)
+        self.apply_normalization()
+
+        # Create normalized dataset from prepared dataset
+        self.normalized_dataset = self.prepared_dataset[self.features_column_names].copy()
+
+        # kill any rows that contain null values TODO: Should modify this to replace values instead depending on what the value is...
+        self.normalized_dataset = self.normalized_dataset.dropna()
         
-        return self.prepared_dataset
+        # Sort normalized data set by tmc_code, TMC_Value, measurement_tstamp
+        self.normalized_dataset = self.normalized_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
+        return self.normalized_dataset
+    
     
     def generate_feature(self, obj_tmas, obj_npmrds, obj_census):
         # accepts data objects and returns a conflated feature for a specified time/GIS slice NOTE: this might not be needed anymore
