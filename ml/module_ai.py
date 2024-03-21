@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import streamlit as st
 import altair as alt
+import gnuplotlib as gp
 
 class ai:
 
@@ -199,6 +200,7 @@ class ai:
                     print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item()}')
                 if (epoch+1) % self.test_interval == 0:
                     predictions, y_test, test_loss, test_accuracy = self.test(model, x_test, y_test)
+                    gp.plot(y_test, predictions)
                     # print(f'  Test Loss: {test_loss} - Test Accuracy: {test_accuracy}')
 
                     # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
