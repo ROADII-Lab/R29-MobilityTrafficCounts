@@ -294,12 +294,12 @@ class data(object):
                 self.calculated_columns.append(col_name_before)
                 self.calculated_columns.append(col_name_after)
         
-        """
-        This function modifies the class variable 'self.prepared_dataset' by adding 
-        a new column 'nearest_VOL' containing the VOL value of the nearest point 
-        based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
-        start_longitude.
-        """
+    """
+    This function modifies the class variable 'self.prepared_dataset' by adding 
+    a new column 'nearest_VOL' containing the VOL value of the nearest point 
+    based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
+    start_longitude.
+    """
     def calculate_nearest_vol(self):
         # Group by the three primary columns
         grouped_df = self.prepared_dataset.groupby(['measurement_tstamp', 'TMC_Value', 'f_system'])
@@ -320,7 +320,6 @@ class data(object):
         # Update column names and training set to include all calculated columns, then reset calculated columns
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)  
-        self.calculated_columns = []
 
     def normalized(self):
         # Call apply_normalization to run all normalization functions (that modify the prepared dataset)
