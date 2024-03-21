@@ -317,7 +317,7 @@ class data(object):
         # Update column names and training set to include all calculated columns, then reset calculated columns
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)  
-        self.calculated_columns = []
+        #self.calculated_columns = []
 
     def normalized(self):
         # Call apply_normalization to run all normalization functions (that modify the prepared dataset)

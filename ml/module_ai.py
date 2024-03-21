@@ -122,8 +122,8 @@ class ai:
         # print(diff)
         # accuracy = 1 - diff
         print(known.shape[0])
-        SST = torch.mean(torch.pow(known-torch.mean(known)), 2)
-        SSR = torch.mean(torch.pow((known-predicted), 2))
+        SST = torch.sum(torch.pow(known-torch.mean(known), 2))
+        SSR = torch.sum(torch.pow((known-predicted), 2))
         return 1-SSR/SST
     
     def plot_convergence(self, predicted, known):

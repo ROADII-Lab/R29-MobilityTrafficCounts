@@ -44,19 +44,19 @@ cols1 = ['tmc_code',
 source_data.OUTPUT_FILE_PATH = r'C:/Users/William.Chupp/OneDrive - DOT OST/Documents/ROADII-DATAPROGRAM/R29-MobilityCounts/JOINED_FILES/NPMRDS_TMC_TMAS_NE_C.csv'
 
 use_custom_cols = True # CHANGE TO TRUE IF USING COLUMNS ABOVE, OTHERWISE USING COLUMNS FROM module_data
-use_pkl = False
+use_pkl = True
 
 # IF USING UPDATED DATASET (any new columns calculated or selected)
 # make sure to delete existing norm_data.pkl otherwise old data will be loaded
 if use_pkl and os.path.isfile("../norm_data.pkl"):
     print("Loaded .pkl file")
-    normalized_df = pickle.load(open("../norm_data.pkl", "rb"))
+    source_data.dataset = pickle.load(open("../norm_data.pkl", "rb"))
 else:
-    result_df = source_data.read()
-    normalized_df = source_data.normalized()
+    source_data.read()
     import pickle
-    pickle.dump(normalized_df, open("../norm_data.pkl", "wb"))
+    pickle.dump(source_data.dataset, open("../norm_data.pkl", "wb"))
 
+normalized_df = source_data.normalized()
 # If using custom columns, add the calculated columns to the custom cols1
 # Otherwise, set columns equal to features training data set that already contains calculated_columns
 if (use_custom_cols):
@@ -65,6 +65,7 @@ else :
     cols1 = source_data.features_training_set
 print(normalized_df)
 
+print(source_data.calculated_columns)
 print(cols1)
 
 result = setup_funcs.train_model(ai, normalized_df, cols1, 'VOL')
