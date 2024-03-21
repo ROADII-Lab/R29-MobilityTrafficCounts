@@ -16,5 +16,6 @@ scikit-learn
 folium
 streamlit
 altair
-dask-exper
+drawilleplot
+dask_expr
 pillow==9.5.0
