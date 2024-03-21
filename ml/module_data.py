@@ -74,6 +74,8 @@ class data(object):
         self.normalized_dataset = None
         self.prepared_dataset = None
         self.calculated_columns = []
+        self.norm_functions = ['tmc_norm', 'tstamp_norm', 'startdate_norm', 'density_norm', 'time_before_after']
+
 
         # setup data sources
         # self.tmas = self.tmas_data()
@@ -269,7 +271,8 @@ class data(object):
         self.prepared_dataset['data_density_Pass'] = norm_multiple_choice(self.prepared_dataset['data_density_Pass'])
         self.prepared_dataset['data_density_Truck'] = norm_multiple_choice(self.prepared_dataset['data_density_Truck'])
 
-     # Creates time before and after datasets in the prepared_dataset
+    # Creates time before and after datasets in the prepared_dataset
+    # This should always be last normalization called since it creates columns based on other calculated columns
     def time_before_after(self):
         self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
         # create a "before" and an "after" dataframe representing shift by -/+ one time increment
@@ -279,9 +282,9 @@ class data(object):
         df_after = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value']).shift(periods=1)
         #df_after = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
-        #Columns to exclude from time before/after
+        #Columns to exclude from time before/after - mostly columns that won't change for a given time period shift
         excluded_columns = ['tmc_code', 'aadt', 'TMC_Value', 'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'f_system', 'urban_code', 'thrulanes_unidir', 'route_sign', 'thrulanes', 'zip', 'Population_2022']
-        # Loop through all columns not uppercase and not in excluded_columns and create a before/after column
+        # Loop through all columns not uppercase (uppercase not part of training) and not in excluded_columns and create a before/after column
         for col in self.prepared_dataset.columns:
             if (not col.isupper() and col not in excluded_columns):
                 col_name_before = col+"_before"
@@ -291,12 +294,12 @@ class data(object):
                 self.calculated_columns.append(col_name_before)
                 self.calculated_columns.append(col_name_after)
         
-        """
-        This function modifies the class variable 'self.prepared_dataset' by adding 
-        a new column 'nearest_VOL' containing the VOL value of the nearest point 
-        based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
-        start_longitude.
-        """
+    """
+    This function modifies the class variable 'self.prepared_dataset' by adding 
+    a new column 'nearest_VOL' containing the VOL value of the nearest point 
+    based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
+    start_longitude.
+    """
     def calculate_nearest_vol(self):
         # Group by the three primary columns
         grouped_df = self.prepared_dataset.groupby(['measurement_tstamp', 'TMC_Value', 'f_system'])
@@ -317,7 +320,6 @@ class data(object):
         # Update column names and training set to include all calculated columns, then reset calculated columns
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)  
-        #self.calculated_columns = []
 
     def normalized(self):
         # Call apply_normalization to run all normalization functions (that modify the prepared dataset)
