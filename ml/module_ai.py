@@ -27,7 +27,7 @@ class ai:
     weight_decay = 0.01                                         # optimizer weight decay                                                
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
     training_learning_rate = 0.02                                # default network learning rate
-    test_interval = 500                          
+    test_interval = 20                          
 
     def __init__(self) -> None:
         
@@ -122,9 +122,12 @@ class ai:
         # print(diff)
         # accuracy = 1 - diff
         print(known.shape[0])
-        mean = torch.sqrt(torch.sum(torch.pow((known), 2))/known.shape[0])
-        rms = torch.sqrt(torch.sum(torch.pow((known-predicted), 2))/known.shape[0])
-        return 1-rms/mean
+        SST = torch.mean(torch.pow(known-torch.mean(known)), 2)
+        SSR = torch.mean(torch.pow((known-predicted), 2))
+        return 1-SSR/SST
+    
+    def plot_convergence(self, predicted, known):
+        pass
 
     def train(self, model, x_train, y_train, x_test, y_test, epochs = training_epochs, learning_rate=training_learning_rate):
         # model sanity checks
