@@ -17,3 +17,4 @@ folium
 streamlit
 altair
 dask-exper
+pillow==9.5.0
