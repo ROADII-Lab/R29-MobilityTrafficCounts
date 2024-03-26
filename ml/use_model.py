@@ -11,6 +11,7 @@ import os
 
 # init ai module
 ai = module_ai.ai()
+ai.model_filename_root = 'C:/Users/William.Chupp/OneDrive - DOT OST/Documents/ROADII-DATAPROGRAM/R29-MobilityCounts/'
 
 # init data module
 source_data = module_data.data()

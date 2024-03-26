@@ -23,14 +23,15 @@ class ai:
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 100                                        # placeholding for the current top model's test loss
-    model_filename_root = "../models/_model"                    # default model filename
+    model_filename_root = "../_model"                             # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 100                                             # number of parameters for the hidden network layer
+    model_size = 50                                           # number of parameters for the hidden network layer
     training_epochs = 2500                                      # default number of epochs to train the network for
-    weight_decay = 0.01                                         # optimizer weight decay                                                
+    weight_decay = 0.5                                         # optimizer weight decay                                                
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.02                                # default network learning rate
-    test_interval = 20                          
+    training_learning_rate = 0.002                                # default network learning rate
+    test_interval = 100
+    pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
         
@@ -127,12 +128,22 @@ class ai:
         print(known.shape[0])
         SST = torch.sum(torch.pow(known-torch.mean(known), 2))
         SSR = torch.sum(torch.pow((known-predicted), 2))
-        return 1-SSR/SST
+
+        percDiff = torch.divide(torch.abs(torch.sub(known, predicted)), known)
+        plt.figure()
+        plt.hist(100*percDiff[percDiff.isfinite()],bins=range(0, 101, 5))
+        plt.title('Distribution of Percent Difference between Expected and Predicted')
+        plt.show()
+        plt.close()
+        numBelow10 = percDiff[percDiff < self.pdiffGoal]
+        percBelow = 100*numBelow10.shape[0]/known.shape[0]
+
+        return 1-SSR/SST, percBelow
     
     def plot_convergence(self, predicted, known):
         plt.figure()
         plt.plot(known, predicted, 'k.')
-        plt.plot(known, known, 'r-')
+        plt.ylim(top = int(torch.max(known)+(0.10*torch.max(known))))
         plt.show()
         plt.close()
 
@@ -206,8 +217,8 @@ class ai:
                     print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item()}')
                 if (epoch+1) % self.test_interval == 0:
                     predictions, y_test, test_loss, test_accuracy = self.test(model, x_test, y_test)
-                    self.plot_convergence(y_test, predictions)
-                    # print(f'  Test Loss: {test_loss} - Test Accuracy: {test_accuracy}')
+                    self.plot_convergence(predictions, y_test)
+                    #print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
 
                     # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
                     if epoch+1 == self.test_interval:
@@ -235,10 +246,10 @@ class ai:
             predictions = model(x_test)
             print(predictions)
             print(y_test)
-            test_accuracy = self.calculate_accuracy(predictions, y_test)
+            R2, Within10 = self.calculate_accuracy(predictions, y_test)
             test_loss = criterion(predictions, y_test)
-            print(f'Test Loss: {test_loss.item()} Test Accuracy: {test_accuracy}')
-            return predictions, y_test, test_loss.item(), test_accuracy
+            print(f'Test Loss: {test_loss.item()}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
+            return predictions, y_test, test_loss.item(), (R2, Within10)
 
     def predict(self, model, data):
         scaler = StandardScaler()
@@ -263,10 +274,10 @@ class LinearNN(nn.Module):
         self.fc5 = nn.Linear(int(layer_size//2), 1)
 
     def forward(self, x):
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.fc2(x)))
-        x = F.relu(self.bn3(self.fc3(x)))
-        x = F.relu(self.bn4(self.fc4(x)))
+        x = F.leaky_relu(self.bn1(self.fc1(x)))
+        x = F.leaky_relu(self.bn2(self.fc2(x)))
+        x = F.leaky_relu(self.bn3(self.fc3(x)))
+        x = F.leaky_relu(self.bn4(self.fc4(x)))
         x = self.fc5(x)  # No activation function here as it's a regression task
         return x
     
