@@ -176,7 +176,7 @@ class data(object):
         else:
             try:
                 print(self.OUTPUT_FILE_PATH)
-                final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'})
+                final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
                 print("Loading cached data...")
                 self.dataset = final_output
             except Exception as err:
