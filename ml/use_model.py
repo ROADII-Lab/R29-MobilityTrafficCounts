@@ -85,8 +85,8 @@ if data_path_is_set:
         cols1 = source_data.features_training_set
     print(normalized_df)
 
-    print(source_data.calculated_columns)
-    print(cols1)
+    # print(source_data.calculated_columns)
+    # print(cols1)
 
     result = setup_funcs.train_model(ai, normalized_df, cols1, 'VOL')
 
