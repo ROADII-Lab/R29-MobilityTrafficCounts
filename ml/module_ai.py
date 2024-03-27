@@ -128,7 +128,6 @@ class ai:
         percDiff_cpu = percDiff.cpu()
 
         plt.figure()
-        bins = [i for i in range(0, max(100, int(100*torch.max(percDiff[percDiff.isfinite()]))+5), 5)]
         plt.hist(100*percDiff[percDiff.isfinite()], bins=[i for i in range(0, 155, 5)])
         plt.title('Distribution of Percent Difference between Expected and Predicted')
         plt.show()
