@@ -20,15 +20,19 @@ class ai:
     # settings / object properties
     features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
     target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
+    training_split = 0.05                                       # controls the amount of data to use for train/test
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 100                                        # placeholding for the current top model's test loss
     model_filename_root = "../_model"                             # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 50                                           # number of parameters for the hidden network layer
-    training_epochs = 2500                                      # default number of epochs to train the network for
-    weight_decay = 0.5                                         # optimizer weight decay                                                
+    model_size = 50                                            # number of parameters for the hidden network layer
+    training_epochs = 800                                       # default number of epochs to train the network for
+    weight_decay = 0.001                                        # optimizer weight decay        
+    dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
+    training_learning_rate = 0.025                              # default network learning rate
+    test_interval = 100                          
     training_learning_rate = 0.002                                # default network learning rate
     test_interval = 100
     pdiffGoal = 0.15                        
@@ -70,7 +74,7 @@ class ai:
             print("WARNING: Duplicate rows detected!")
 
         # Split the data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42,)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.training_split, random_state=42,)
 
         # Output some basic debug info
         print("Training set size is", len(X_train),"records.")
@@ -92,7 +96,7 @@ class ai:
     def model_init(self, x_dim):
         # Initialize the neural network
         input_size = x_dim.shape[1]
-        self.model = LinearNN(input_size, self.model_size)
+        self.model = LinearNN(input_size, self.model_size, self.dropout)
         self.model.to(self.device)
         return 
     
@@ -261,24 +265,29 @@ class ai:
 
 # *Somewhat* simple neural network!
 class LinearNN(nn.Module):
-    def __init__(self, input_size, layer_size):
+    def __init__(self, input_size, layer_size, dropout):
         super(LinearNN, self).__init__()
-        self.fc1 = nn.Linear(int(input_size), int(layer_size))
-        self.bn1 = nn.BatchNorm1d(int(layer_size))
-        self.fc2 = nn.Linear(int(layer_size), int(layer_size))
-        self.bn2 = nn.BatchNorm1d(int(layer_size))
-        self.fc3 = nn.Linear(int(layer_size), int(layer_size//2))
-        self.bn3 = nn.BatchNorm1d(int(layer_size//2))
-        self.fc4 = nn.Linear(int(layer_size//2), int(layer_size//2))
-        self.bn4 = nn.BatchNorm1d(int(layer_size//2))
-        self.fc5 = nn.Linear(int(layer_size//2), 1)
+        # Adjust the network by reducing the number of layers and using a consistent size for hidden layers
+        self.fc1 = nn.Linear(input_size, int(layer_size*2))
+        self.bn1 = nn.BatchNorm1d(int(layer_size*2))
+        self.fc2 = nn.Linear(int(layer_size*2), layer_size)
+        self.bn2 = nn.BatchNorm1d(layer_size)
+        self.fc3 = nn.Linear(layer_size, layer_size // 2)  # Reduce layer size
+        self.bn3 = nn.BatchNorm1d(layer_size // 2)
+        self.fc4 = nn.Linear(layer_size // 2, 1)  # Output layer for regression
+
+        # Optional: add dropout for regularization
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.fc1(x)))
-        x = F.leaky_relu(self.bn2(self.fc2(x)))
-        x = F.leaky_relu(self.bn3(self.fc3(x)))
-        x = F.leaky_relu(self.bn4(self.fc4(x)))
-        x = self.fc5(x)  # No activation function here as it's a regression task
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = self.dropout(x)
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = self.dropout(x)
+        x = F.relu(self.bn3(self.fc3(x)))
+        x = self.dropout(x)
+        x = self.fc4(x)  # No activation function here as it's a regression task
+
         return x
     
     # Function to save the model
