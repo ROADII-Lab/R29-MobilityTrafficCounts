@@ -12,6 +12,7 @@
   ],
   	// Container environment variables
 	"containerEnv": {
-    "CENSUS_API_KEY": "${localEnv:CENSUS_API_KEY}"
+    "CENSUS_API_KEY": "${localEnv:CENSUS_API_KEY}",
+    "TRIMS_DATA_SOURCE": "${localEnv:TRIMS_DATA_SOURCE}"
 	}
 }

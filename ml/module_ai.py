@@ -20,17 +20,19 @@ class ai:
     # settings / object properties
     features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
     target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
+    training_split = 0.05                                       # controls the amount of data to use for train/test
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 100                                        # placeholding for the current top model's test loss
-    model_filename_root = "../_model"                             # default model filename
+    model_filename_root = "../models/model_"                    # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 100                                        # number of parameters for the hidden network layer
-    training_epochs = 2500                                      # default number of epochs to train the network for
-    weight_decay = 0.05                                         # optimizer weight decay                                                
+    model_size = 60                                             # number of parameters for the hidden network layer
+    training_epochs = 2000                                      # default number of epochs to train the network for
+    weight_decay = 0.001                                        # optimizer weight decay        
+    dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.02                                # default network learning rate
-    test_interval = 100
+    training_learning_rate = 0.025                              # default network learning rate
+    test_interval = 100                                         # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
@@ -70,7 +72,7 @@ class ai:
             print("WARNING: Duplicate rows detected!")
 
         # Split the data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42,)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.training_split, random_state=42,)
 
         # Output some basic debug info
         print("Training set size is", len(X_train),"records.")
@@ -92,7 +94,7 @@ class ai:
     def model_init(self, x_dim):
         # Initialize the neural network
         input_size = x_dim.shape[1]
-        self.model = LinearNN(input_size, self.model_size)
+        self.model = LinearNN(input_size, self.model_size, self.dropout)
         self.model.to(self.device)
         return 
     
@@ -112,39 +114,39 @@ class ai:
         self.model_filename = self.model_filename_root + ".pkl"
 
     def calculate_accuracy(self, predicted, known):
-        # this calculates accuracy using the mean error between values in each tensor
         if predicted.shape != known.shape:
             raise ValueError("The two tensors must be of the same shape!")
-        # scale the metrics to the values in each tensor
-        # torch.sqrt(torch.sum(torch.pow(tensor1-tensor))/tensor1.shape[0])
-        
-        # diff = torch.abs(torch.sum(tensor1)-torch.sum(tensor2))/torch.mean(torch.cat((tensor1, tensor2)))    
-        # # max_difference = max_val - min_val
 
-        # # if max_difference == 0:
-        # #     raise ValueError("Max difference between tensors is 0!")
-        # print(diff)
-        # accuracy = 1 - diff
         print(known.shape[0])
-        SST = torch.sum(torch.pow(known-torch.mean(known), 2))
-        SSR = torch.sum(torch.pow((known-predicted), 2))
+
+        SST = torch.sum(torch.pow(known - torch.mean(known), 2))
+        SSR = torch.sum(torch.pow((known - predicted), 2))
 
         percDiff = torch.divide(torch.abs(torch.sub(known, predicted)), known)
+
+        # Move tensors to CPU for matplotlib operations
+        percDiff_cpu = percDiff.cpu()
+
         plt.figure()
         bins = [i for i in range(0, max(100, int(100*torch.max(percDiff[percDiff.isfinite()]))+5), 5)]
         plt.hist(100*percDiff[percDiff.isfinite()], bins=[i for i in range(0, 155, 5)])
         plt.title('Distribution of Percent Difference between Expected and Predicted')
         plt.show()
         plt.close()
-        numBelow10 = percDiff[percDiff < self.pdiffGoal]
-        percBelow = 100*numBelow10.shape[0]/known.shape[0]
 
-        return 1-SSR/SST, percBelow
+        numBelow10 = percDiff[percDiff < self.pdiffGoal]
+        percBelow = 100 * numBelow10.shape[0] / known.shape[0]
+
+        return 1 - SSR / SST, percBelow
     
     def plot_convergence(self, predicted, known):
+        # Ensure tensors are moved to CPU before plotting
+        predicted_cpu = predicted.cpu()
+        known_cpu = known.cpu()
+
         plt.figure()
-        plt.plot(known, predicted, 'k.')
-        plt.ylim(top = int(torch.max(known)+(0.10*torch.max(known))))
+        plt.plot(known_cpu, predicted_cpu, 'k.')
+        plt.ylim(top=int(torch.max(known_cpu) + (0.10 * torch.max(known_cpu))))
         plt.show()
         plt.close()
 
@@ -262,24 +264,32 @@ class ai:
 
 # *Somewhat* simple neural network!
 class LinearNN(nn.Module):
-    def __init__(self, input_size, layer_size):
+    def __init__(self, input_size, layer_size, dropout):
         super(LinearNN, self).__init__()
-        self.fc1 = nn.Linear(int(input_size), int(layer_size))
-        self.bn1 = nn.BatchNorm1d(int(layer_size))
-        self.fc2 = nn.Linear(int(layer_size), int(layer_size))
-        self.bn2 = nn.BatchNorm1d(int(layer_size))
-        self.fc3 = nn.Linear(int(layer_size), int(layer_size//2))
-        self.bn3 = nn.BatchNorm1d(int(layer_size//2))
-        self.fc4 = nn.Linear(int(layer_size//2), int(layer_size//2))
-        self.bn4 = nn.BatchNorm1d(int(layer_size//2))
-        self.fc5 = nn.Linear(int(layer_size//2), 1)
+        self.fc1 = nn.Linear(input_size, int(layer_size*2))
+        self.bn1 = nn.BatchNorm1d(int(layer_size*2))
+        self.fc2 = nn.Linear(int(layer_size*2), layer_size)
+        self.bn2 = nn.BatchNorm1d(layer_size)
+        self.fc3 = nn.Linear(int(layer_size), layer_size)
+        self.bn3 = nn.BatchNorm1d(layer_size)
+        self.fc4 = nn.Linear(layer_size, layer_size // 2)  # Reduce layer size
+        self.bn4 = nn.BatchNorm1d(layer_size // 2)
+        self.fc5 = nn.Linear(layer_size // 2, 1)  # Output layer for regression
+
+        # Optional: add dropout for regularization
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.fc1(x)))
-        x = F.leaky_relu(self.bn2(self.fc2(x)))
-        x = F.leaky_relu(self.bn3(self.fc3(x)))
-        x = F.leaky_relu(self.bn4(self.fc4(x)))
+        x = F.relu(self.bn1(self.fc1(x)))
+        # x = self.dropout(x)
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = self.dropout(x)
+        x = F.relu(self.bn3(self.fc3(x)))
+        x = self.dropout(x)
+        x = F.relu(self.bn4(self.fc4(x)))
+        # x = self.dropout(x)
         x = self.fc5(x)  # No activation function here as it's a regression task
+
         return x
     
     # Function to save the model
