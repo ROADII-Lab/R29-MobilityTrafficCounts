@@ -27,7 +27,7 @@ class ai:
     model_filename_root = "../models/model_"                    # default model filename
     model_filename = None                                       # placeholder for model filename
     model_size = 60                                             # number of parameters for the hidden network layer
-    training_epochs = 2000                                      # default number of epochs to train the network for
+    training_epochs = 2500                                      # default number of epochs to train the network for
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
@@ -114,18 +114,19 @@ class ai:
         self.model_filename = self.model_filename_root + ".pkl"
 
     def calculate_accuracy(self, predicted, known):
-        if predicted.shape != known.shape:
+        # move data back to main memory for CPU processing
+        predicted_cpu = predicted.cpu()
+        known_cpu = known.cpu()
+
+        if predicted_cpu.shape != known_cpu.shape:
             raise ValueError("The two tensors must be of the same shape!")
 
-        print(known.shape[0])
+        print(known_cpu.shape[0])
 
-        SST = torch.sum(torch.pow(known - torch.mean(known), 2))
-        SSR = torch.sum(torch.pow((known - predicted), 2))
+        SST = torch.sum(torch.pow(known_cpu - torch.mean(known_cpu), 2))
+        SSR = torch.sum(torch.pow((known_cpu - predicted_cpu), 2))
 
-        percDiff = torch.divide(torch.abs(torch.sub(known, predicted)), known)
-
-        # Move tensors to CPU for matplotlib operations
-        percDiff_cpu = percDiff.cpu()
+        percDiff = torch.divide(torch.abs(torch.sub(known_cpu, predicted_cpu)), known_cpu)
 
         plt.figure()
         plt.hist(100*percDiff[percDiff.isfinite()], bins=[i for i in range(0, 155, 5)])
