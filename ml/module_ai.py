@@ -25,11 +25,11 @@ class ai:
     model_top_loss = 100                                        # placeholding for the current top model's test loss
     model_filename_root = "../_model"                             # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 50                                           # number of parameters for the hidden network layer
+    model_size = 100                                        # number of parameters for the hidden network layer
     training_epochs = 2500                                      # default number of epochs to train the network for
-    weight_decay = 0.5                                         # optimizer weight decay                                                
+    weight_decay = 0.05                                         # optimizer weight decay                                                
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.002                                # default network learning rate
+    training_learning_rate = 0.02                                # default network learning rate
     test_interval = 100
     pdiffGoal = 0.15                        
 
@@ -131,7 +131,8 @@ class ai:
 
         percDiff = torch.divide(torch.abs(torch.sub(known, predicted)), known)
         plt.figure()
-        plt.hist(100*percDiff[percDiff.isfinite()],bins=range(0, 101, 5))
+        bins = [i for i in range(0, max(100, int(100*torch.max(percDiff[percDiff.isfinite()]))+5), 5)]
+        plt.hist(100*percDiff[percDiff.isfinite()], bins=[i for i in range(0, 155, 5)])
         plt.title('Distribution of Percent Difference between Expected and Predicted')
         plt.show()
         plt.close()
@@ -178,7 +179,7 @@ class ai:
         
         # setup optimizer
         # Define the loss function and optimizer
-        criterion = nn.MSELoss()
+        criterion = nn.HuberLoss(delta=500)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=self.weight_decay)
         
         # Place chart plotting epochs in a streamlit window
