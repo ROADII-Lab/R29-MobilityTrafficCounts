@@ -84,7 +84,7 @@ st.dataframe(normalized_df[0:50])
 
 #choose input features
 cols1 = source_data.features_training_set
-in_cols = st.multiselect(label = "Choost input columns", options=cols1, default=source_data.features_training_set)
+in_cols = st.multiselect(label = "Choose input columns", options=cols1, default=source_data.features_training_set)
 
 # Target Col Dropdown
 cols2 = normalized_df.columns
