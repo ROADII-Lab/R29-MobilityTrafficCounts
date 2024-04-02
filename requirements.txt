@@ -19,3 +19,4 @@ altair
 drawilleplot
 dask_expr
 pillow==9.5.0
+curses
