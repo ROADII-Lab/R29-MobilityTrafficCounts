@@ -7,6 +7,7 @@ import pandas as pd
 import module_ai
 import module_data
 import module_census
+import wx
 
 
 # helper functions / hooks for object calls
@@ -51,12 +52,13 @@ def find_string_index(alist, search_string):
         return False
 
 @st.cache_data
-def setup():
+def setup(filePath):
     # init ai module
     ai = module_ai.ai()
 
     # init data module
     source_data = module_data.data()
+    source_data.OUTPUT_FILE_PATH = filePath
 
     # init census data (using saved data for now)
     # census_dataobj = module_census.census_data()
@@ -70,10 +72,34 @@ def setup():
     return census_df, result_df, normalized_df, ai, source_data
 
 # run setup
-census_df, result_df, normalized_df, ai, source_data = setup()
 
 # UI title
 st.title("Mobility Counts Prediction")
+
+if st.button("Choose source data file"):
+    ap = wx.App()
+    ap.MainLoop()
+    dialog = wx.FileDialog(None,"Select a folder:", style=wx.FD_DEFAULT_STYLE)
+    st.session_state.dialog = dialog
+    if dialog.ShowModal() == wx.ID_OK:
+        folder_path = dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
+        census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
+    else:
+        census_df = pd.DataFrame()
+        result_df = pd.DataFrame()
+        normalized_df = pd.DataFrame()
+        ai = module_ai.ai()
+        source_data = pd.DataFrame()
+elif 'dialog' not in st.session_state:
+        census_df = pd.DataFrame()
+        result_df = pd.DataFrame()
+        normalized_df = pd.DataFrame()
+        ai = module_ai.ai()
+        source_data = pd.DataFrame()
+else:
+    folder_path = st.session_state.dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
+    census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
+
 
 # setup a display of the raw input data
 st.header("Raw Data")

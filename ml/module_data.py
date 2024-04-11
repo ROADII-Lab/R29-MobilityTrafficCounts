@@ -81,7 +81,7 @@ class data(object):
         # self.tmas = self.tmas_data()
         # self.tmas.read()
         
-        # self.npmrds = self.npmrds_data()
+        self.npmrds = self.npmrds_data()
         # self.tmc = self.tmc_data()
         
         # output
