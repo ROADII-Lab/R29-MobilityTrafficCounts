@@ -1,79 +1,193 @@
-# README Outline:
-* Project Description
-* Prerequisites
-* Usage
+# README: U.S. DOT ROADII Mobility Traffic Counts
+1. Project Description
+2. Prerequisites
+3. Usage
 	* Building
 	* Testing
 	* Execution
-* Additional Notes
-* Version History and Retention
-* License
-* Contributions
-* Contact Information
-* Acknowledgements
+4. Additional Notes
+5. Version History and Retention
+6. License
+7. Contributing to the Code
+8. Contact Information
+9. Acknowledgements
 
-# Project Description
+
+# 1. Project Description
+
+### ROADII Background
+
+Research, Operational, and Artificial Intelligence Data Integration Initiative (ROADII) is a multi-year initiative led by the United States Department of Transportation (U.S. DOT) Intelligent Transportation Systems Joint Program Office (ITS JPO).
+
+ROADII’s vision is to expand U.S. transportation agencies’ (regional, state, local, tribal, etc.) access to advanced data analytics knowledge and resources including Artificial Intelligence (AI) and Machine Learning (ML). The ROADII team:
+- Identifies and evaluates **use cases** that can benefit from advanced data analytics, AI, and ML
+- Develops **proofs-of-concept** for use cases
+- **Engages stakeholders** with proofs-of-concept and refine based on stakeholder feedback
+- **Makes advanced data analytics, AI, and ML tools** available to the public at a central location (e.g., ITS CodeHub) 
+
+The processes and tools developed under ROADII will enable data scientists, researchers, and data providers to test and share new transportation-related AI algorithms; to develop high-value and well-documented AI training datasets; to reduce the barriers of applying AI approaches to transportation data; and to train future transportation researchers.
+
+For more information, visit ITS JPO [here](https://www.its.dot.gov/).
 
 ### ROADII Use Case 29 - Mobility Traffic Counts
 
-- **Title:** High-Availability Traffic Count Estimation for Mobility Modeling, Planning Projects, and Environmental Impact Modeling. 
-- **Purpose and goals of the project:** This ROADII use case provides methods to geographically match traffic counting station data with prob-collected speed data on the National Highway System across the country to produce a training dataset for predicting roadway traffic volumes across the entire national highway system. The code provides basic neural network training capabilities as well as a user interface to easily load input data, pick input and target columns, and train a model. The model architecture in this repository was developed using the Traffic Monitoring and Analysis System traffic volume data produced and managed by FHWA and the National Performance Measurement Research Data Set speed data managed by RITIS. These traffic data sources are vizualized in the maps below:
+- **Full Title:** “High-Resolution Mobility Traffic Count Estimation for Modeling, Planning, and Environmental Impact Applications” 
+- **Purpose and goals of the project:** The Mobility Traffic Counts code base geographically matches **traffic counting station data** with **probe-collected speed data** on the U.S. National Highway System (NHS), to produce training datasets for roadway traffic volume prediction across the entire road system. The code provides a Graphical User Interface (GUI) to easily load input data, select input and target columns, and train a model using basic AI neural network methods.
 
-<img src="resources/NHSSpeed.png" width="600">
+Figure 1 shows traffic speed data on NHS roadway links. The speed data originate from U.S. DOT National Performance Management Research Dataset (NPMRDS) managed by the Regional Integrated Transportation Information System (RITIS).
 
-<img src="resources/TMASStations.png" width="600">
+<img src="resources/01_NHSSpeed.png" width="600">
 
-- **Purpose of the source code and how it relates to the overall goals of the project:** This repository contains code that will make it easier and more approachable for a state or local agency stakeholder to develop a simple neural network model to output historical traffic count data on national highway system links for which real world measured counts are not available. This is the case for most links on the national highway system. The intended audiences are state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forcasting efforts. 
-- **Length of the project:** This use case is currently in the development phase. The ROADII team will be updating this repository as stable developments are created. This phase will likely continue through spring 2024. 
+*Figure 1. NHS Roadway Links with Speed Data*
+
+Figure 2 shows the locations of over 8,000 U.S. Federal Highway Administration (FHWA), Travel Monitoring Analysis System (TMAS) stations for traffic counting and classification.
+
+<img src="resources/02_TMASStations.png" width="600">
+
+*Figure 2. TMAS Traffic Counting Stations*
+
+Figure 3 shows U.S. Census 2020 Population Density by County as an example of the Census data used in the code base. The code base uses NHS roadway links where traffic counts and speed data are available, along with Census data; to perform prediction for NHS roadway links having similar Census data characteristics where traffic counts and/or speed data are not available.
+
+<img src="resources/03_USCensus2020PopDensityExample.png" width="600">
+
+*Figure 3. U.S. Census 2020 Population Density by County (Retrieved from https://maps.geo.census.gov/ddmv/map.html)*
+
+- **Purpose of the source code and how it relates to the overall goals of the project:** This code base will make it easier and more approachable for transportation agencies to develop a simple neural network model to output historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
+- **Length of the project:** The code base is currently in development. The ROADII team will update this repository as stable builds of the code are created. Development and testing will likely continue through spring 2024. 
 
 
-# Prerequisites
+# 2. Prerequisites
 
 Requires:
-- Python 3.6.0 or later
+- Installation of Python 3.6.0 or later
+- Installation of Python packages listed in *requirements.txt*
+- Command prompt application to run the source code from the current working directory
 
-# Usage
 
-## Building
+# 3. Usage
+
+### Building the Mobility Traffic Counts Model
 
 The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building the mobility counts model. The following modules are contained therein:
 
-- *main.py*: Produces a streamlit application that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column. The streamlit application can be opened in any web browser at "localhost:8501."
-- *use_model.py*: Provides a script for using a cached or pickled model file to produce traffic count estimates. Also provides an easier, script based methodology to train a new model version without using the streamlit application or interface. This is useful for more rapid model iteration.
-- *setup_funcs.py*: Provides functions for setting up the various data sources for training the model
-- *module_data*: Reads, formats, and joins the various data sources into a single training dataset. This includes the Traffic Monitoring and Analysis System traffic volume data and the National Performance Measurement Research Data Set speed data. 
-- *module_census*: Connects the training data to census information to improve model performance. 
-- *module_ai*: Defines the ML training loop, the model architecture, and saves the resulting model for later use. Also provides methods to use a saved or cached model file. 
+- *main.py*: Produces a Streamlit GUI that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column. The Streamlit application can be opened in any web browser at "localhost:8501"
+- *use_model.py*: Uses a cached or pickled model file (.pt/.pkl format) to produce traffic count estimates. Also provides an easier, script based methodology to train a new model version without using the Streamlit application or interface. This is useful for more rapid model iteration
+- *setup_funcs.py*: Set up the various data sources for training the model
+- *module_data.py*: Reads, formats, and joins the various data sources into a single training dataset. This includes the Traffic Monitoring and Analysis System traffic volume data and the National Performance Measurement Research Data Set speed data 
+- *module_ai.py*: Defines the ML training loop, the model architecture, and saves the resulting model for later use. Also provides methods to use a saved or cached model file 
 
+### Testing The Model
 
-## Testing
+The ROADII team is currently building testing functions for this code and will update the repository when those testing functions are available. 
 
-The ROADII TRIMS team is currently building testing functions for this code and will update the repository when those testing functions are available. 
-
-## Execution
+### Executing the Model
 
 The steps to run the model training algorithm are as follows:
 
-1) Download the TMAS year for the analysis year of interest from the following site: [DANA Tool Input Data Installers](https://www.fhwa.dot.gov/environment/air_quality/methodologies/dana/).
-2) Download the NPMRDS data for your region of interest: [RITIS NPMRDS Analytics Site](https://npmrds.ritis.org/analytics/).
-3) Download the included "TMC_Matches_2021.csv" file.
-4) Run `pip install -r requirements.txt` to obtain the necessary python packages.
-5) Update the data file names in `main.py` to your local versions.
-6) Run `main.py` to produce the streamlit interface and train the ML model.
+1) Download the TMAS data for the analysis year of interest from the following website: [DANA Tool Input Data Installers](https://www.fhwa.dot.gov/environment/air_quality/methodologies/dana/)
+2) Download the NPMRDS data for the analysis region of interest from the following website: [RITIS NPMRDS Analytics Site](https://npmrds.ritis.org/analytics/)
+3) Download the included "TMC_Matches_2021.csv" file
+4) In a command prompt application (e.g., Anaconda Prompt), execute the line *pip install -r requirements.txt* to ensure all necessary Python packages are up to date
+5) Create a new folder at the same level as the “ml” folder named “data” and place “NPMRDS_TMC_TMAS_NE_C.csv” in “data”
+6) Create a new folder at the same level as the “ml” folder” named “models”; the models trained by the source code are saved in this folder
+7) Update the data file paths and directory file paths in main.py according to your working directory
+8) Run *main.py* to produce the Streamlit GUI. For instance, execute the line in a command prompt application *streamlit run main.py*
+9) After the GUI has loaded successfully, click the “choose source data file” button to select input data
+10) After the GUI populates the “Raw Data” and “Normalized Training Data” viewing panes, use the “choose input columns" drop-down menu to select input data
+11) After selecting the desired input columns for training, use the “choose a target column” drop-down menu to select the data field to predict, the results of which will be saved in a trained AI model
+12) After a model has been trained successfully and saved in “models”; click “use model”
 
-# Additional Notes
+The following figures show in-development screenshots from the Streamlit GUI. Figure 4 shows the user’s ability to choose a source data file as the input dataset. If the user clicks on the “Choose source data file” button, then a dialog box opens, and the user may explore files and select a source data file.
+
+<img src="resources/04_StreamlitSourceDataFile.png" width="600">
+
+*Figure 4. Streamlit GUI – User Chooses Source Data File*
+
+Once the user chooses a source data file, Figure 5 shows the user’s ability to view an abridged sample of the input data. In addition, the code base normalizes non-numerical data columns and the Streamlit GUI displays this “normalized” data in a separate pane in the same format as Figure 5, this “normalized” data pane is not shown.
+
+<img src="resources/05_StreamlitUserViewsInputData.png" width="600">
+
+*Figure 5. Streamlit GUI – User Views Input Data*
+
+Figure 6 shows the user’s ability to choose input data columns and the target data column in AI model training. The input data columns should not include the target column. After the user chooses input data columns and the target data column and clicks “Train Model” – then AI model training is initiated and the user will start to see in-progress results in their command prompt application. After AI model training is complete, the code base saves an AI model file to the sub-directory “..\models.”
+
+In addition, the user may test a previously-generated AI model without training an AI model. If the user clicks “Test Model” – then a dialog box opens, and the user may explore files and select an AI model file. Typically, AI model files are saved in the sub-directory “..\models.” 
+
+<img src="resources/06_StreamlitUserTrainTestAIModel.png" width="600">
+
+*Figure 6. Streamlit GUI – User Selects Input Data for AI Model Training on a Targeted Metric. Alternatively, User May Test Previously Generated AI Models*
+
+If the user chooses to train an AI model, Figure 7 shows the AI model training progress with a real-time updating graph on the Streamlit GUI. The x-axis is the number of AI training epochs; the user may set the number of training epochs in the source code, and the AI model training process ends once the number of epochs is reached. The y-axis is the logarithmic loss of the AI model training.
+
+<img src="resources/07_StreamlitTrainAIModelProgress.png" width="600">
+
+*Figure 7. Streamlit GUI – Example of AI Model Training Progress*
+
+In addition to Figure 7, Figure 8 shows the AI model training process with a periodically updating graph in the command prompt application. In Figure 8, the x-axis is the percent difference (absolute value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value), and the y-axis is the number of occurrences in a percent difference histogram bin. The bin size in Figure 8 is two (2) percent.
+
+Figure 9 is another periodically updating graph in the command prompt application. The x-axis is the expected value while the y-axis is the predicted value.
+
+<img src="resources/08_StreamlitTrainAIModelProgress.png" width="600">
+
+*Figure 8. AI Model Training – Histogram of Percent Difference (Absolute Value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value)*
+
+<img src="resources/09_StreamlitTrainAIModelProgress.png" width="600">
+
+*Figure 9. AI Model Training – AI Model Training (i.e., Predicted Value) versus Input Data (i.e., Expected Value)*
+
+After the AI model training completes, the following outputs are seen on the command prompt application. The logarithmic loss, tensor, test loss, and R-squared values provide a high-level summary of the AI model training. The AI model is saved to “..\models.”
+
+-------------------
+
+Epoch [2500/2500],
+
+Logarithmic Loss: 104156.6484375,
+
+tensor([[2079.9739],
+            [ 271.9318],
+            [4203.4741],
+            ...,
+            [ 647.0178],
+            [3022.9729],
+            [ 242.9163]])
+	    
+tensor([[2846.],
+            [ 394.],
+            [5372.],
+            ...,
+            [2676.],
+            [2528.],
+            [ 103.]])
+	    
+Test Loss: 382541.6875,
+
+R2: 0.8152651190757751,
+
+36.359431140945375% are within 15.0 Percent of Expected,
+
+Model weights saved to ../models/model__20240329_194737
+
+Model file saved to ../models/model__20240329_194737
+
+-------------------
+
+*{to add: explanation of loss, tensor, and R2 values if helpful}*
+ 
+*{to add: explanation of AI training outputs}*
+
+*{to add: outputs of “Use Model”}*
+
+
+# 4. Additional Notes
 
 The geographic region that the algorithms use to train the model is determined by the NPMRDS data input into the code. Additional updates and improvements are planned in future releases and iterations.
 
-**Known Issues:**
+**Known Issues:** None identified, this use case is still in development and future updates will be tested sufficiently before being released. 
 
-None identified, this use case is still in development and future updates will be tested sufficiently before being released. 
+**Associated datasets:** This use case incorporates NPMRDS, TMAS, U.S. Census, and other data sources to train the model discussed herein.
 
-**Associated datasets:**
 
-Thi use case incorporates NPMRDS, TMAS, Census, and other data sources to train the model discussed herein.
-
-# Version History and Retention
+# 5. Version History and Retention
 
 **Status:** This project is in active development phase. 
 
@@ -81,36 +195,54 @@ Thi use case incorporates NPMRDS, TMAS, Census, and other data sources to train 
 
 **Retention:** This project will likely remain publicly accessible indefinitely. 
 
-# License
-This project is licensed under the Creative Commons 1.0 Universal (CC0 1.0) License - see the [License.MD](https://github.com/usdot-jpo-codehub/codehub-readme-template/blob/master/LICENSE) for more details. 
 
-# Contributions
-Please read [CONTRIBUTING.md](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/Contributing.MD) for details on our Code of Conduct, the process for submitting pull requests to us, and how contributions will be released.
+# 6. License
 
-# Contact Information
+This project is licensed under the Creative Commons 1.0 Universal (CC0 1.0) License - see the [License.md](https://github.com/usdot-jpo-codehub/codehub-readme-template/blob/master/LICENSE) file for more details. 
+
+
+# 7. Contributing to the Code
+
+Please read [Contributing.md](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/Contributing.MD) for details on our Code of Conduct, the process for submitting pull requests to us, and how contributions will be released.
+
+
+# 8. Contact Information
 
 Contact Name: Billy Chupp
+
 Contact Information: William.Chupp@dot.gov
 
 Contact Name: Eric Englin
+
 Contact Information: Eric.Englin@dot.gov
 
-## Citing this code
 
-To cite this code in a publication or report, please cite our associated report/paper and/or our source code. Below is a sample citation for this code:
+### Citing this code
 
-> ROADII Team. (2024). _ROADII README Template_ (0.1) [Source code]. Provided by ITS JPO through GitHub.com. Accessed 20214-02-23 from https://doi.org/xxx.xxx/xxxx.
+Users may cite our code base and/or associated publications. Below is a sample citation for the code base:
+
+> ROADII Team. (2024). _ROADII README Template_ (0.1) [Source code]. Provided by ITS JPO through GitHub.com. Accessed yyyy-mm-dd from https://doi.org/xxx.xxx/xxxx.
 
 When you copy or adapt from this code, please include the original URL you copied the source code from and date of retrieval as a comment in your code. Additional information on how to cite can be found in the [ITS CodeHub FAQ](https://its.dot.gov/code/#/faqs).
 
-## Contributors
 
-- Billy Chupp (Volpe) William.Chupp@dot.gov
-- Eric Englin (Volpe) Eric.Englin@dot.gov
-- RJ Ritmuller (Volpe) Robert.Ritmuller@dot.gov
-- Michael Barzach (Volpe) Michael.Barzach@dot.gov
-- Jason Lu (Volpe) Jason.Lu@dot.gov
+# 9. Acknowledgements
 
-The development of ROADII that contributed to this public version was funded by the U.S. Intelligent Transportation Systems Joint Program Office (ITS JPO) under IAA HWE3A122. Any opinions, findings, conclusions or recommendations expressed in this material are those of the authors and do not necessarily reflect the views of the ITS JPO.
+- Billy Chupp (Volpe), William.Chupp@dot.gov
+- Eric Englin (Volpe), Eric.Englin@dot.gov
+- RJ Ritmuller (Volpe), Robert.Ritmuller@dot.gov
+- Michael Barzach (Volpe), Michael.Barzach@dot.gov
+- Jason Lu (Volpe), Jason.Lu@dot.gov
+
+This project is funded by the U.S. DOT, ITS JPO under IAA HWE3A122. Any opinions, findings, conclusions, or recommendations expressed in this material are those of the authors and do not necessarily reflect the views of the ITS JPO.
+
+### Languages
+
+-Python [100.0%](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/search?l=python)
+
+### About
+
+This repository provides code for using ML methods to join national traffic datasets. One of these traffic data sets measure speed, and the other measures traffic volumes.
+
 
 
