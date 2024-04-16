@@ -1,12 +1,14 @@
 # Mobility Counts Prediction
 # 
-import streamlit as st
+import datetime as dt
 import pandas as pd
+import streamlit as st
 
 # Import custom modules
 import module_ai
-import module_data
 import module_census
+import module_data
+import pytz
 import wx
 
 
@@ -75,7 +77,17 @@ def setup(filePath):
 
 # GUI home page
 st.title("Mobility Traffic Counts AI Prediction")
-tab1, tab2 = st.tabs(["1. Train Model","2. Test Model"])
+
+# Display current/system datetime
+now = dt.datetime.now(pytz.timezone('UTC'))
+date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+st.write('Current Datetime is ',date_time,' UTC')
+
+# Display software build/version - placeholder
+st.write('Current Build is v0.12345')
+
+# Define tabs
+tab1, tab2, tab3, tab4 = st.tabs(["1. Train Model","2. Test Model","3. Results","4. About"])
 
 # GUI tab #1: Train Model
 with tab1:
@@ -139,6 +151,33 @@ with tab2:
 		st.write('Model testing started...')
 		test_accuracy = test_model(ai, normalized_df, in_cols, target_col)
 		st.write('Model Accuracy = ', test_accuracy)
+
+
+# GUI tab #3: Show results
+with tab3:
+	st.header("Traffic Counts Prediction Results")
+	
+	# Display results
+	# to insert a U.S. map showing
+	#	i) input road segments and
+	# 	ii) new road segments predicted by AI model
+	st.subheader("Placeholder for U.S. Map")
+
+
+# GUI tab #4: About
+with tab4:
+	st.header("About")
+	
+	# GitHub link
+	st.write('Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.')
+	
+	# Readme link
+	st.write('Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf)'.)
+	
+	# POCs
+	st.write("Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov")
+	
+
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
