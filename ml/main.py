@@ -51,6 +51,7 @@ def find_string_index(alist, search_string):
     except ValueError:
         return False
 
+# run setup
 @st.cache_data
 def setup(filePath):
     # init ai module
@@ -71,62 +72,73 @@ def setup(filePath):
 
     return census_df, result_df, normalized_df, ai, source_data
 
-# run setup
 
-# UI title
-st.title("Mobility Counts Prediction")
+# GUI home page
+st.title("Mobility Traffic Counts AI Prediction")
+tab1, tab2 = st.tabs(["1. Train Model","2. Test Model"])
 
-if st.button("Choose source data file"):
-    ap = wx.App()
-    ap.MainLoop()
-    dialog = wx.FileDialog(None,"Select a folder:", style=wx.FD_DEFAULT_STYLE)
-    st.session_state.dialog = dialog
-    if dialog.ShowModal() == wx.ID_OK:
-        folder_path = dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
-        census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
-    else:
-        census_df = pd.DataFrame()
-        result_df = pd.DataFrame()
-        normalized_df = pd.DataFrame()
-        ai = module_ai.ai()
-        source_data = pd.DataFrame()
-elif 'dialog' not in st.session_state:
-        census_df = pd.DataFrame()
-        result_df = pd.DataFrame()
-        normalized_df = pd.DataFrame()
-        ai = module_ai.ai()
-        source_data = pd.DataFrame()
-else:
-    folder_path = st.session_state.dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
-    census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
+# GUI tab #1: Train Model
+with tab1:
+	st.header("Train a Traffic Counts Model")
+	
+	# FilePicker - Choose source data file
+	if st.button("Choose source data file"):
+		ap = wx.App()
+		ap.MainLoop()
+		dialog = wx.FileDialog(None,"Select a folder:", style=wx.FD_DEFAULT_STYLE)
+		st.session_state.dialog = dialog
+		if dialog.ShowModal() == wx.ID_OK:
+			folder_path = dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
+			census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
+		else:
+			census_df = pd.DataFrame()
+			result_df = pd.DataFrame()
+			normalized_df = pd.DataFrame()
+			ai = module_ai.ai()
+			source_data = pd.DataFrame()
+	elif 'dialog' not in st.session_state:
+			census_df = pd.DataFrame()
+			result_df = pd.DataFrame()
+			normalized_df = pd.DataFrame()
+			ai = module_ai.ai()
+			source_data = pd.DataFrame()
+	else:
+		folder_path = st.session_state.dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
+		census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
+	
+	# Raw data pane
+	st.header("Raw Data")
+	st.dataframe(result_df[0:50])
 
+	# Normalized data pane
+	st.header("Normalized Training Data")
+	st.dataframe(normalized_df[0:50])
+	
+	# Choose input column(s) drop-down menu
+	cols1 = source_data.features_training_set
+	in_cols = st.multiselect(label="Choose input column(s) (select one or more):", options=cols1, default=source_data.features_training_set)
+	
+	# Choose target column
+	cols2 = normalized_df.columns
+	target_col = st.selectbox(label="Choose target column (select only one):", options=cols2, index=find_string_index(cols2, source_data.features_target))
+	
+	if st.button('Train Model'):
+		st.write('Model training started...')
+		result = train_model(ai, normalized_df, in_cols, target_col)
+		st.write(result)
+	
+	
+# GUI tab #2: Test/Use Model
+with tab2:
+	st.header("Test a Traffic Counts Model")
+	
+	# Input column(s) and target column GUI buttons (previous single window)
+	list_of_model_files = ai.get_model_list('..\models')
+	ai.model_filename = st.selectbox(label = 'Choose a model file', options=list_of_model_files)
+	if st.button('Test Model'):
+		st.write('Model testing started...')
+		test_accuracy = test_model(ai, normalized_df, in_cols, target_col)
+		st.write('Model Accuracy = ', test_accuracy)
 
-# setup a display of the raw input data
-st.header("Raw Data")
-st.dataframe(result_df[0:50])
-
-st.header("Normalized Training Data")
-st.dataframe(normalized_df[0:50])
-
-#choose input features
-cols1 = source_data.features_training_set
-in_cols = st.multiselect(label = "Choose input columns", options=cols1, default=source_data.features_training_set)
-
-# Target Col Dropdown
-cols2 = normalized_df.columns
-target_col = st.selectbox(label = 'Choose a target column', options= cols2, index=find_string_index(cols2, source_data.features_target))
-# UI buttons
-col1, col2 = st.columns(2)
-with col1:
-    if st.button('Train Model'):
-        st.write('Model training started...')
-        result = train_model(ai, normalized_df, in_cols, target_col)
-        st.write(result)
-
-with col2:
-    list_of_model_files = ai.get_model_list('.')
-    ai.model_filename = st.selectbox(label = 'Choose a model file', options=list_of_model_files)
-    if st.button('Test Model'):
-        st.write('Model testing started...')
-        test_accuracy = test_model(ai, normalized_df, in_cols, target_col)
-        st.write('Model Accuracy = ', test_accuracy)
+# -------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
