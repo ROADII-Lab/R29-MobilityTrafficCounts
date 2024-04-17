@@ -294,33 +294,17 @@ class LinearNN(nn.Module):
     
     # Function to save the model
     def save(self, filename):
-        # just save the model weights, useful for restarting training at a later point but requires that the model structure not change
-        filename = self.create_filename(filename)
-        torch.save(self.state_dict(), filename + ".pkl")
-        print(f"Model weights saved to {filename}")
-
         # save the entire model for stand-alone inference later
         model_jit = torch.jit.script(self)
         model_jit.save(filename + ".pt")
         print(f"Model file saved to {filename}")
 
         return True
-
-    # Function to load the model
-    def load_cached_weights(self, filename):
-        try:
-            self.load_state_dict(torch.load(filename))
-            self.eval()
-            print(f"Model loaded from {filename}")
-            return True
-        except Exception as e:
-            print(e)
-            return False
         
     def load_model_for_inference(self, filename):
         try:
-            # Load the state dictionary from the file and force CPU until the ai module overrides it
-            self.model.load_state_dict(torch.load(filename, map_location=torch.device('cpu')))
+            # Load the entire JIT-compiled model
+            self.model = torch.jit.load(filename, map_location=torch.device('cpu'))
             # Switch the model to evaluation mode
             self.model.eval()
             print(f"Model loaded from {filename}")
