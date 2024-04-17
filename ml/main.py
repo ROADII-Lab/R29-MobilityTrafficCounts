@@ -172,10 +172,10 @@ with tab4:
 	st.write('Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.')
 	
 	# Readme link
-	st.write('Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf)'.)
+	st.write('Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf).')
 	
 	# POCs
-	st.write("Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov")
+	st.write("Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov.")
 	
 
 
