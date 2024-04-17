@@ -294,6 +294,8 @@ class LinearNN(nn.Module):
     
     # Function to save the model
     def save(self, filename):
+        filename = self.create_filename(filename)
+
         # save the entire model for stand-alone inference later
         model_jit = torch.jit.script(self)
         model_jit.save(filename + ".pt")
