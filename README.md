@@ -1,4 +1,4 @@
-# README: U.S. DOT ROADII Mobility Traffic Counts AI Prediction
+# README: U.S. DOT ROADII -- Mobility Traffic Counts AI Prediction
 1. Project Description
 2. Prerequisites
 3. Usage
@@ -11,6 +11,7 @@
 7. Contributing to the Code
 8. Contact Information
 9. Acknowledgements
+10. README Version History
 
 
 # 1. Project Description
