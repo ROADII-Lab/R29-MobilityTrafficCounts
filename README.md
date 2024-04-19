@@ -71,11 +71,14 @@ Requires:
 
 The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building the mobility counts model. The following modules are contained therein:
 
-- *main.py*: Produces a Streamlit GUI that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column. The Streamlit application can be opened in any web browser at "localhost:8501"
-- *use_model.py*: Uses a cached or pickled model file (.pt/.pkl format) to produce traffic count estimates. Also provides an easier, script based methodology to train a new model version without using the Streamlit application or interface. This is useful for more rapid model iteration
-- *setup_funcs.py*: Set up the various data sources for training the model
-- *module_data.py*: Reads, formats, and joins the various data sources into a single training dataset. This includes the Traffic Monitoring and Analysis System traffic volume data and the National Performance Measurement Research Data Set speed data 
-- *module_ai.py*: Defines the ML training loop, the model architecture, and saves the resulting model for later use. Also provides methods to use a saved or cached model file 
+- **<main.py>:** Produces a Streamlit GUI that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column
+	* The user’s default web browser (e.g., Google Chrome, Microsoft Edge) opens a Streamlit application with the address "localhost:8501"
+	* Once the web browser opens, the user may click “Open in App” to open a standalone Streamlit application
+- **<use_model.py>:** Uses a cached model file (.pt format) to produce traffic count estimates. Also provides an easier, script based methodology to train a new model version without using the Streamlit application or interface. This is useful for more rapid model iteration
+- **<setup_funcs.py>:** Sets up the various data sources for training the model
+- **<module_data.py>:** Reads, formats, and joins the various data sources into a single training dataset. This includes the Traffic Monitoring and Analysis System traffic volume data and the National Performance Measurement Research Data Set speed data
+- **<module_census.py>:** Connects the training data to census information to improve model performance
+- **<module_ai.py>:** Defines the AI/ML training loop, the model architecture, and saves the resulting model for later use. Also provides methods to use a saved or cached model file 
 
 ### Testing The Model
 
@@ -88,53 +91,64 @@ The steps to run the model training algorithm are as follows:
 1) Download the TMAS data for the analysis year of interest from the following website: [DANA Tool Input Data Installers](https://www.fhwa.dot.gov/environment/air_quality/methodologies/dana/)
 2) Download the NPMRDS data for the analysis region of interest from the following website: [RITIS NPMRDS Analytics Site](https://npmrds.ritis.org/analytics/)
 3) Download the included "TMC_Matches_2021.csv" file
-4) In a command prompt application (e.g., Anaconda Prompt), execute the line *pip install -r requirements.txt* to ensure all necessary Python packages are up to date
+4) In a command prompt application (e.g., Anaconda Prompt), execute the line **--> pip install -r requirements.txt** to ensure all necessary Python packages are up to date
 5) Create a new folder at the same level as the “ml” folder named “data” and place “NPMRDS_TMC_TMAS_NE_C.csv” in “data”
 6) Create a new folder at the same level as the “ml” folder” named “models”; the models trained by the source code are saved in this folder
 7) Update the data file paths and directory file paths in main.py according to your working directory
-8) Run *main.py* to produce the Streamlit GUI. For instance, execute the line in a command prompt application *streamlit run main.py*
+8) Run *main.py* to produce the Streamlit GUI. For instance, execute the line in a command prompt application **--> streamlit run main.py**
 9) After the GUI has loaded successfully, click the “choose source data file” button to select input data
 10) After the GUI populates the “Raw Data” and “Normalized Training Data” viewing panes, use the “choose input columns" drop-down menu to select input data
 11) After selecting the desired input columns for training, use the “choose a target column” drop-down menu to select the data field to predict, the results of which will be saved in a trained AI model
 12) After a model has been trained successfully and saved in “models”; click “use model”
 
-The following figures show in-development screenshots from the Streamlit GUI. Figure 4 shows the user’s ability to choose a source data file as the input dataset. If the user clicks on the “Choose source data file” button, then a dialog box opens, and the user may explore files and select a source data file.
+The following figures show in-development screenshots from the Streamlit GUI. The Streamlit GUI provides a main banner at the top, along with four (4) tabs that may be toggled by the user which are:
+
+- "Train Model": User loads source data and trains an AI model on this tab
+- "Test Model": User loads previously trained AI models and tests that AI model. User may perform tasks on this tab as long as they have previously trained AI models. If the user has not trained any AI models or no models are saved in “..\models”; then they should train models in the “Train Model” tab
+- "Results": User views a U.S. map data visualization that shows the NHS road segments covered by input data, the NHS road segments covered by AI prediction, and mobility attributes (e.g., traffic counts, speed) on NHS road segments
+- "About": User views links for helpful information related to this source code e.g., Points of Contacts, GitHub link, and README download link
+
+Figure 4 shows the Streamlit GUI’s main banner at the top, and the user’s ability to choose a source data file as the input dataset. The main banner shows the current datetime and current build; the ROADII team may add other data in future versions. If the user clicks on the “Choose source data file” button, then a dialog box opens, and the user may explore files and select a source data file.
 
 <img src="resources/04_StreamlitSourceDataFile.png" width="600">
 
 *Figure 4. Streamlit GUI – User Chooses Source Data File*
 
-Once the user chooses a source data file, Figure 5 shows the user’s ability to view an abridged sample of the input data. In addition, the code base normalizes non-numerical data columns and the Streamlit GUI displays this “normalized” data in a separate pane in the same format as Figure 5, this “normalized” data pane is not shown.
+After the user chooses a source data file, the source code ingests the source data and displays an abridged sample of the source data in the “Train Model” tab. Figure 5 shows the user’s ability to view an abridged sample of the source data. In addition, the code base normalizes non-numerical data columns and the Streamlit GUI displays this “normalized” data in a separate pane in the same format as Figure 5, this “normalized” data pane is not shown in the figure.
 
 <img src="resources/05_StreamlitUserViewsInputData.png" width="600">
 
 *Figure 5. Streamlit GUI – User Views Input Data*
 
-Figure 6 shows the user’s ability to choose input data columns and the target data column in AI model training. The input data columns should not include the target column. After the user chooses input data columns and the target data column and clicks “Train Model” – then AI model training is initiated and the user will start to see in-progress results in their command prompt application. After AI model training is complete, the code base saves an AI model file to the sub-directory “..\models.”
+Figure 6 shows the user’s ability to choose input data columns and the target data column in AI model training – in the “Train Model” tab. The input data columns should not include the target column. After the user chooses input data columns and the target data column and clicks “Train Model” – then AI model training is initiated and the user will start to see in-progress results in their command prompt application. After AI model training is complete, the code base saves an AI model file to the sub-directory “..\models.”
 
-In addition, the user may test a previously-generated AI model without training an AI model. If the user clicks “Test Model” – then a dialog box opens, and the user may explore files and select an AI model file. Typically, AI model files are saved in the sub-directory “..\models.” 
+<img src="resources/06_StreamlitUserTrainAIModel.png" width="600">
 
-<img src="resources/06_StreamlitUserTrainTestAIModel.png" width="600">
+*Figure 6. Streamlit GUI – User Selects Input Data for AI Model Training on a Targeted Metric*
 
-*Figure 6. Streamlit GUI – User Selects Input Data for AI Model Training on a Targeted Metric. Alternatively, User May Test Previously Generated AI Models*
+In addition, the user may test a previously generated AI models without training an AI model – in the “Test Model” tab. In Figure 7, the user may click on the “Choose a model file” drop-down menu and select a model file (in .pt format) from “..\models.” Once a model file is selected, the user may click the “Test Model” button to begin testing.
 
-If the user chooses to train an AI model, Figure 7 shows the AI model training progress with a real-time updating graph on the Streamlit GUI. The x-axis is the number of AI training epochs; the user may set the number of training epochs in the source code, and the AI model training process ends once the number of epochs is reached. The y-axis is the logarithmic loss of the AI model training.
+<img src="resources/07_StreamlitUserTestAIModel.png" width="600">
 
-<img src="resources/07_StreamlitTrainAIModelProgress.png" width="600">
+*Figure 7. Streamlit GUI – User Tests Previously Generated AI Models*
 
-*Figure 7. Streamlit GUI – Example of AI Model Training Progress*
+In the “Train Model” tab, if the user chooses to train a new AI model, Figure 8 shows the AI model training progress with a real-time updating graph on the Streamlit GUI. The x-axis is the number of AI training epochs; the user may set the number of training epochs in the source code, and the AI model training process ends once the number of epochs is reached. The y-axis is the logarithmic loss of the AI model training.
 
-In addition to Figure 7, Figure 8 shows the AI model training process with a periodically updating graph in the command prompt application. In Figure 8, the x-axis is the percent difference (absolute value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value), and the y-axis is the number of occurrences in a percent difference histogram bin. The bin size in Figure 8 is two (2) percent.
+<img src="resources/08_StreamlitTrainAIModelProgress.png" width="450">
 
-Figure 9 is another periodically updating graph in the command prompt application. The x-axis is the expected value while the y-axis is the predicted value.
+*Figure 8. Streamlit GUI – Example of AI Model Training Progress*
 
-<img src="resources/08_StreamlitTrainAIModelProgress.png" width="600">
-
-*Figure 8. AI Model Training – Histogram of Percent Difference (Absolute Value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value)*
+In addition to Figure 8 being shown on the Streamlit GUI, Figure 9 shows the AI model training process with a periodically updating graph in the command prompt application. In Figure 9, the x-axis is the percent difference (absolute value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value), and the y-axis is the number of occurrences in a percent difference histogram bin. The bin size in Figure 9 is two (2) percent.
 
 <img src="resources/09_StreamlitTrainAIModelProgress.png" width="600">
 
-*Figure 9. AI Model Training – AI Model Training (i.e., Predicted Value) versus Input Data (i.e., Expected Value)*
+*Figure 9. AI Model Training – Histogram of Percent Difference (Absolute Value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value)*
+
+Figure 10 is another periodically updating graph in the command prompt application. The x-axis is the expected value while the y-axis is the predicted value.
+
+<img src="resources/10_StreamlitTrainAIModelProgress.png" width="600">
+
+*Figure 10. AI Model Training – AI Model Training (i.e., Predicted Value) versus Input Data (i.e., Expected Value)*
 
 After the AI model training completes, the following outputs are seen on the command prompt application. The logarithmic loss, tensor, test loss, and R-squared values provide a high-level summary of the AI model training. The AI model is saved to “..\models.”
 
@@ -176,7 +190,7 @@ Model file saved to ../models/model__20240329_194737
  
 *{to add: explanation of AI training outputs}*
 
-*{to add: outputs of “Use Model”}*
+*{to add: outputs and screenshots of “Test Model tab”}*
 
 
 # 4. Additional Notes
@@ -245,5 +259,11 @@ This project is funded by the U.S. DOT, ITS JPO under IAA HWE3A122. Any opinions
 
 This repository provides code for using ML methods to join national traffic datasets. One of these traffic data sets measure speed, and the other measures traffic volumes.
 
+
+# 10. README Version History
+
+*Table 1. README Version History*
+
+<img src="resources/ReadmeVersionHistory.PNG" width="450">
 
 
