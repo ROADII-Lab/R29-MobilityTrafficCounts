@@ -245,7 +245,7 @@ When you copy or adapt from this code, please include the original URL you copie
 
 - Billy Chupp (Volpe), William.Chupp@dot.gov
 - Eric Englin (Volpe), Eric.Englin@dot.gov
-- RJ Ritmuller (Volpe), Robert.Ritmuller@dot.gov
+- RJ Rittmuller (Volpe), Robert.Rittmuller@dot.gov
 - Michael Barzach (Volpe), Michael.Barzach@dot.gov
 - Jason Lu (Volpe), Jason.Lu@dot.gov
 
