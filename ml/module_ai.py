@@ -41,7 +41,7 @@ class ai:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Using ", self.device)
 
-    def get_model_list(self, path, extension='pkl'):
+    def get_model_list(self, path, extension='pt'): # def get_model_list(self, path, extension='pkl'):
         # returns a list of models in the specified path
         matching_files = []
         if not extension.startswith('.'):

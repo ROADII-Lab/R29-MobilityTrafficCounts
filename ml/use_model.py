@@ -64,8 +64,10 @@ if data_path_is_set:
     source_data.OUTPUT_FILE_PATH = str(data_path)
 
     use_custom_cols = True # CHANGE TO TRUE IF USING COLUMNS ABOVE, OTHERWISE USING COLUMNS FROM module_data
-    use_pkl = True
+    #use_pkl = True
+	use_pt = True
 
+	'''
     # IF USING UPDATED DATASET (any new columns calculated or selected)
     # make sure to delete existing norm_data.pkl otherwise old data will be loaded
     if use_pkl and os.path.isfile("../norm_data.pkl"):
@@ -75,6 +77,17 @@ if data_path_is_set:
         source_data.read()
         import pickle
         pickle.dump(source_data.dataset, open("../data/norm_data.pkl", "wb"))
+	'''
+
+	# IF USING UPDATED DATASET (any new columns calculated or selected)
+    # make sure to delete existing norm_data.pkl otherwise old data will be loaded
+    if use_pt and os.path.isfile("../norm_data.pt"):
+        print("Loaded .pt file")
+        source_data.dataset = pickle.load(open("../data/norm_data.pt", "rb"))
+    else:
+        source_data.read()
+        import pickle
+        pickle.dump(source_data.dataset, open("../data/norm_data.pt", "wb"))
 
     normalized_df = source_data.normalized()
     # If using custom columns, add the calculated columns to the custom cols1
