@@ -21,3 +21,4 @@ dask_expr
 pillow==9.5.0
 windows-curses
 wxPython
+streamlit-folium
