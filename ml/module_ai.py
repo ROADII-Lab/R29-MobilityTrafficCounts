@@ -32,10 +32,10 @@ class ai:
     model_top_loss = 100                                        # placeholding for the current top model's test loss
     model_filename_root = "../models/model_"                    # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 60                                             # number of parameters for the hidden network layer
+    model_size = 100                                            # number of parameters for the hidden network layer
     training_epochs = 2500                                      # default number of epochs to train the network for
     training_batch_size = 200000                                # number of records we *think* we can fit into the GPU...
-    training_workers = 10                                       # number of dataloader workers to use for loading training data into the GPU
+    training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
     testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
@@ -48,7 +48,9 @@ class ai:
         
         # setup GPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("Using ", self.device)
+        if(self.device == "cuda"):
+            torch.cuda.init()
+            print("Using ", self.device)
 
     def get_model_list(self, path, extension='pt'): # def get_model_list(self, path, extension='pkl'):
         # returns a list of models in the specified path
@@ -199,14 +201,20 @@ class ai:
         plt.close()
 
     def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate):
-        # figure out what the max batch size is...
-        # self.set_max_batch_size(x_train, y_train)
+        # Check if multiple GPUs are available and wrap the model using DataParallel
+        if torch.cuda.device_count() > 1:
+            print(f"Let's use {torch.cuda.device_count()} GPUs!")
+            torch.cuda.synchronize()
+            model = nn.DataParallel(model)
+
+        # Send model to device (will be GPU if CUDA is available)
+        model.to(self.device)
 
         # Convert training and testing data into PyTorch datasets and dataloaders
         train_dataset = TensorDataset(x_train, y_train)
         train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
         test_dataset = TensorDataset(x_test, y_test)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
         # Define the loss function and optimizer
         criterion = nn.HuberLoss(delta=500)
@@ -258,15 +266,15 @@ class ai:
                 if (epoch+1) % self.test_interval == 0:
                     predictions, y_test, test_loss, test_accuracy  = self.test(model, test_loader)
                     self.plot_convergence(predictions, y_test)
-                   
+                
                     print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
 
                     # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
                     if epoch+1 == self.test_interval:
                         self.model_top_loss = test_loss
-                        self.model_top = copy.deepcopy(self.model)
+                        self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                     if test_loss < self.model_top_loss:
-                        self.model_top = copy.deepcopy(self.model)
+                        self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                         self.model_top_loss = test_loss
                         if test_loss <= self.target_loss:
                             print("Early stopping!")
