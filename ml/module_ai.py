@@ -1,11 +1,17 @@
 import copy
 import os
+import time
 import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset, BatchSampler, RandomSampler
+import pandas as pd
+import altair as alt
+import copy
+import streamlit as st
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -28,10 +34,13 @@ class ai:
     model_filename = None                                       # placeholder for model filename
     model_size = 60                                             # number of parameters for the hidden network layer
     training_epochs = 2500                                      # default number of epochs to train the network for
+    training_batch_size = 200000                                # number of records we *think* we can fit into the GPU...
+    training_workers = 10                                       # number of dataloader workers to use for loading training data into the GPU
+    testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.025                              # default network learning rate
+    training_learning_rate = 0.035                              # default network learning rate
     test_interval = 100                                         # model testing interval during training
     pdiffGoal = 0.15                        
 
@@ -53,6 +62,45 @@ class ai:
                     matching_files.append(os.path.join(root, file))
         
         return matching_files
+    
+    def set_max_batch_size(self, x_train, y_train):
+        print("Determining optimal batch size...")
+        model = self.model.to(self.device)
+        batch_size = self.training_batch_size
+        max_memory_used = 0
+        acceptable_memory = torch.cuda.get_device_properties(self.device).total_memory * 0.8
+
+        while True:
+            try:
+                # Create DataLoader with the current batch size for each iteration
+                train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=batch_size, shuffle=True)
+                
+                print("Testing batch size:", batch_size)
+
+                for x_batch, y_batch in train_loader:
+                    x_batch, y_batch = x_batch.to(self.device), y_batch.to(self.device)
+                    with torch.no_grad():
+                        output = model(x_batch)
+                    break # stop after one pass
+
+                memory_used = torch.cuda.memory_allocated(self.device)
+                if memory_used < acceptable_memory and memory_used > max_memory_used:
+                    max_memory_used = memory_used
+                    batch_size *= 2  # Increase batch size
+                else:
+                    break  # If memory exceeds acceptable limit or no more improvement, stop increasing
+            except RuntimeError as e:
+                if 'out of memory' in str(e):
+                    print("CUDA out of memory with batch size:", batch_size)
+                    batch_size //= 2  # Halve the batch size if out of memory
+                    if batch_size < 1:
+                        break
+                else:
+                    raise e
+
+        model = None
+        torch.cuda.empty_cache()  # Clear memory cache
+        self.training_batch_size = batch_size
 
     def format_training_data(self, dataframe):
         # formats features for input into the model
@@ -84,10 +132,10 @@ class ai:
         X_test = scaler.transform(X_test)
 
         # Convert the data to PyTorch tensors
-        X_train_tensor = torch.tensor(X_train.astype(np.float32)).to(self.device)
-        y_train_tensor = torch.tensor(y_train.values.astype(np.float32)).view(-1, 1).to(self.device)
-        X_test_tensor = torch.tensor(X_test.astype(np.float32)).to(self.device)
-        y_test_tensor = torch.tensor(y_test.values.astype(np.float32)).view(-1, 1).to(self.device)
+        X_train_tensor = torch.tensor(X_train.astype(np.float32))
+        y_train_tensor = torch.tensor(y_train.values.astype(np.float32)).view(-1, 1)
+        X_test_tensor = torch.tensor(X_test.astype(np.float32))
+        y_test_tensor = torch.tensor(y_test.values.astype(np.float32)).view(-1, 1)
 
         return X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor
     
@@ -150,40 +198,20 @@ class ai:
         plt.show()
         plt.close()
 
-    def train(self, model, x_train, y_train, x_test, y_test, epochs = training_epochs, learning_rate=training_learning_rate):
-        # model sanity checks
-        with torch.no_grad():
-            initial_outputs = model(x_train)
-            if torch.isnan(initial_outputs).any():
-                print('Initial outputs contain NaNs:', initial_outputs)
+    def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate):
+        # figure out what the max batch size is...
+        # self.set_max_batch_size(x_train, y_train)
 
-                for name, param in model.named_parameters():
-                    if torch.isnan(param).any():
-                        print(f'NaN found in {name} during initialization')
-                
-                test_input = torch.zeros_like(x_train)
-                with torch.no_grad():
-                    test_output = model(test_input)
-                    if torch.isnan(test_output).any():
-                        print('NaN produced with basic input! Check network initialization or definition!')
-                
-                # check for NaNs in the input data
-                if torch.isnan(x_train).any():
-                    print('NaN in x_train!')
-                    nan_indices = torch.isnan(x_train)
-                    if nan_indices.any():
-                        print(f"NaN values found at: {nan_indices.nonzero()} in x_train!")
-                if torch.isnan(y_train).any():
-                    print('NaN in y_train')
-                    nan_indices = torch.isnan(y_train)
-                    if nan_indices.any():
-                        print(f"NaN values found at: {nan_indices.nonzero()} in y_train!")
-        
-        # setup optimizer
+        # Convert training and testing data into PyTorch datasets and dataloaders
+        train_dataset = TensorDataset(x_train, y_train)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
+        test_dataset = TensorDataset(x_test, y_test)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers)
+
         # Define the loss function and optimizer
         criterion = nn.HuberLoss(delta=500)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=self.weight_decay)
-        
+
         # Place chart plotting epochs in a streamlit window
         col3, col4 = st.columns([1,1])
         with col4:
@@ -191,37 +219,47 @@ class ai:
         with col3:
             # Initialize Plotting of Epoch and Loss
             data = pd.DataFrame({'Epoch': [], 'Loss':[]})
-            chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')),
-                                            y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
-            chart = chart.properties(title='Logarithmic Loss vs Epochs')
+            chart = alt.Chart(data).mark_line(color='red').encode(
+                x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')),
+                y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
+            ).properties(title='Logarithmic Loss vs Epochs')
             alt_chart = st.altair_chart(chart, use_container_width=False)
             
-            # train the model
+            # Training loop
             for epoch in range(epochs):
+                epoch_start = time.time()  # Start time of the epoch
                 model.train()
-                outputs = model(x_train)
-                loss = criterion(outputs, y_train)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                total_loss = 0
+                for x_batch, y_batch in train_loader:
+                    x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
+                    # Forward pass
+                    outputs = model(x_batch)
+                    loss = criterion(outputs, y_batch)
+                    # Backward pass and optimization
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    total_loss += loss.item()
 
-                # Create new data for this loop iteration
-                new_data = pd.DataFrame({'Epoch': [epoch], 'Loss' : [loss.item()]})
-                if epoch == 1:
-                    data = new_data
-                else:
-                    data = pd.concat([data, new_data], ignore_index=True) 
+                average_loss = total_loss / len(train_loader)
+                epoch_duration = time.time() - epoch_start  # Calculate duration of the epoch
 
-                # create chart and add to existing container in streamlit
-                chart = alt.Chart(data).encode(x=alt.X('Epoch', scale=alt.Scale(domain=(0,epochs)), axis=alt.Axis(title='Epochs')), 
-                                            y=alt.Y('Loss',scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))).mark_line(color='red')
+                # Update and display the chart
+                new_data = pd.DataFrame({'Epoch': [epoch], 'Loss': [average_loss]})
+                data = pd.concat([data, new_data], ignore_index=True) 
+                chart = alt.Chart(data).mark_line(color='red').encode(
+                    x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')), 
+                    y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
+                )
                 alt_chart.altair_chart(chart)
-                if (epoch+1) % 10 == 0:
-                    print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item()}')
+
+                print(f'Epoch [{epoch+1}/{epochs}], Loss: {average_loss:.4f}, Time: {epoch_duration:.2f} sec')
+
                 if (epoch+1) % self.test_interval == 0:
-                    predictions, y_test, test_loss, test_accuracy = self.test(model, x_test, y_test)
+                    predictions, y_test, test_loss, test_accuracy  = self.test(model, test_loader)
                     self.plot_convergence(predictions, y_test)
-                    #print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
+                   
+                    print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
 
                     # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
                     if epoch+1 == self.test_interval:
@@ -234,25 +272,42 @@ class ai:
                             print("Early stopping!")
                             self.model_save(self.model_top)
                             return
-        
-        # save and make sure we set the model to the best weights
-        self.model_save(self.model_top)
-        self.model = self.model_top
 
-    def test(self, model, x_test, y_test):
-        # setup loss function
+            # Final model saving after training
+            self.model_save(self.model_top)
+            self.model = self.model_top
+
+
+    def test(self, model, test_loader):
         criterion = nn.MSELoss()
-        
-        # Evaluate the model
         model.eval()
+
+        total_loss = 0
+        all_predictions = []
+        all_y_test = []
+
         with torch.no_grad():
-            predictions = model(x_test)
-            print(predictions)
-            print(y_test)
-            R2, Within10 = self.calculate_accuracy(predictions, y_test)
-            test_loss = criterion(predictions, y_test)
-            print(f'Test Loss: {test_loss.item()}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
-            return predictions, y_test, test_loss.item(), (R2, Within10)
+            for x_batch, y_batch in test_loader:
+                x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
+                predictions = model(x_batch)
+                test_loss = criterion(predictions, y_batch)
+                total_loss += test_loss.item()
+
+                all_predictions.append(predictions)
+                all_y_test.append(y_batch)
+
+        # Concatenate all batches for calculating accuracy and other metrics
+        all_predictions = torch.cat(all_predictions, dim=0)
+        all_y_test = torch.cat(all_y_test, dim=0)
+
+        R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
+        average_test_loss = total_loss / len(test_loader)
+
+        # print(all_predictions)
+        # print(all_y_test)
+        print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
+        
+        return all_predictions, all_y_test, average_test_loss, (R2, Within10)
 
     def predict(self, model, data):
         scaler = StandardScaler()
