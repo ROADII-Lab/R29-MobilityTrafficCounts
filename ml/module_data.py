@@ -43,11 +43,11 @@ class data(object):
 
 
         # setup data sources
-        self.tmas = self.tmas_data()
-        #self.tmas.read()
+        #self.tmas = self.tmas_data()
         
-        self.npmrds = self.npmrds_data()
-        self.tmc = self.tmc_data()
+        
+        #self.npmrds = self.npmrds_data()
+        # self.tmc = self.tmc_data()
         
         # output
         self.always_cache_data = False
@@ -57,7 +57,7 @@ class data(object):
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
                                 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
-                                'average_speed_All', # (int)
+                                # 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
                                 'data_density_All', ## text field to normalize
@@ -85,13 +85,13 @@ class data(object):
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
                                 # 'HPMS_ALL', # (int)
                                 #'NOISE_ALL', # (int)
-                                'Population_2022' # (int) population by county
+                                # 'Population_2022' # (int) population by county
                                 ]
         
         self.features_training_set = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                           
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
                                 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
-                                'average_speed_All', # (int)
+                                # 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
                                 'data_density_All', ## text field to normalize
@@ -119,7 +119,7 @@ class data(object):
                                 #'F_SYSTEM', ## numerical field to incorporate (int)
                                 # 'HPMS_ALL', # (int)
                                 #'NOISE_ALL' # (int)
-                                'Population_2022' # (int) population by county
+                                # 'Population_2022' # (int) population by county
                                 ]
 
         self.features_target = "VOL"
@@ -275,14 +275,14 @@ class data(object):
         # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
         self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp'], errors='coerce')
         self.prepared_dataset['measurement_tstamp'] = self.prepared_dataset['measurement_tstamp'].interpolate(method='linear')
-        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).view('int64') // 10**9
+        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).astype('int64') // 10**9
 
     # Function to normalize active_start_date
     def startdate_norm(self):
         # convert 'active_start_date' from (yyyy-mm-dd hh:mm:ss +- time zone) to integer seconds UTC
         self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date'], errors='coerce')
         self.prepared_dataset['active_start_date'] = self.prepared_dataset['active_start_date'].dt.tz_convert(None)
-        self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date']).view('int64') // 10**9
+        self.prepared_dataset['active_start_date'] = pd.to_datetime(self.prepared_dataset['active_start_date']).astype('int64') // 10**9
 
 
     # Function to normalize data_density_XXXX
