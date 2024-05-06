@@ -3,3 +3,5 @@
 *.pyc
 *.pkl
 *.pt
+ml/join_data.py
+ml/test_model.py

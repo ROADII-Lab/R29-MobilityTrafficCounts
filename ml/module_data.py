@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from math import radians, sin, cos, acos
+import pickle
 
 # common functions
 def merge(dataframe1, dataframe2, key):
@@ -26,43 +27,7 @@ def norm_multiple_choice(list1):
     # https://stackoverflow.com/questions/63580106/is-there-a-function-to-normalize-strings-and-convert-them-to-integers-floats
     # d = {x: i for i, x in enumerate(sorted(set(list1)))} # sorting causes an error, cannot quantitativetly compare a string to a blank
     d = {x: i for i, x in enumerate(set(list1))}
-    return [d[s] for s in list1]
-
-# HELPER FUNCTIONS TO CALCULATED nearest_Vol
-def distance(lat1, lon1, lat2, lon2):
-    earth_radius = 6371  # Earth radius in kilometers (you can adjust this value)
-    lat1 = radians(lat1)
-    lon1 = radians(lon1)
-    lat2 = radians(lat2)
-    lon2 = radians(lon2)
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-
-    a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1) * cos(lat2) * sin(dlon / 2) * sin(dlon / 2)
-    c = 2 * acos(min(1, a))  # Limit acos value to be between -1 and 1
-    distance = earth_radius * c
-
-    return distance 
-
-def calculate_vol(df_group):
-  # Iterate through each row and find the minimum distance
-  for idx, row in df_group.iterrows():
-    min_distance = float('inf') #starting at very large number
-    nearest_vol = None
-    found_match = False  # Flag to track if a match is found
-    for inner_idx, inner_row in df_group.iterrows():
-      if idx != inner_idx: #excluding considering itself as a match
-        dist = distance(row['start_latitude'], row['start_longitude'], 
-                                         inner_row['start_latitude'], inner_row['start_longitude'])
-        if dist < min_distance:
-          min_distance = dist
-          nearest_vol = inner_row['VOL']
-          found_match = True  # Set flag if a match is found
-    if not found_match:  # Check if no match was found
-      nearest_vol = -1  # Assign -1 if no match
-    row['nearest_VOL'] = nearest_vol
-  return df_group       
+    return [d[s] for s in list1]      
 
 class data(object):
     # class object that handles pre-processing of various data sources
@@ -78,15 +43,16 @@ class data(object):
 
 
         # setup data sources
-        # self.tmas = self.tmas_data()
-        # self.tmas.read()
+        self.tmas = self.tmas_data()
+        #self.tmas.read()
         
-        # self.npmrds = self.npmrds_data()
-        # self.tmc = self.tmc_data()
+        self.npmrds = self.npmrds_data()
+        self.tmc = self.tmc_data()
         
         # output
-        self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_NE_C.csv'
+        self.always_cache_data = False
+        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
+        self.prejoin = r'../data/prejoin.pkl'
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
@@ -159,11 +125,22 @@ class data(object):
         self.features_target = "VOL"
 
     def join_and_save(self):
-        # run the joins and then save the results to storage
-        NPMRDS_Join = self.npmrds.CombineNPMRDS()
-        NPMRDS_TMC = self.TMC_Join(NPMRDS_Join)
+
+        # Check if the file exists at self.prejoin
+        if os.path.exists(self.prejoin):
+            NPMRDS_TMC = pickle.load(open(self.prejoin, "rb"))
+            print("NPMRDS_TMC pkl read")
+        else:
+            # If file doesn't exist, create file with joins
+            NPMRDS_Join = self.npmrds.CombineNPMRDS()
+            print("NPMRDS Joined")
+            NPMRDS_TMC = self.TMC_Join(NPMRDS_Join)
+            print("TMC AND NPMRDS Joined")
+
         final_output = self.TMAS_Join(NPMRDS_TMC)
-        final_output.to_csv(self.OUTPUT_FILE_PATH, index = True)
+        print("Joined with TMAS, now outputting to pkl")
+        pickle.dump(final_output, open(self.OUTPUT_FILE_PATH, "wb"))
+        print("Data output to pkl")
 
         self.dataset = final_output
 
@@ -186,28 +163,71 @@ class data(object):
         return final_output
 
     def TMAS_Join(self, NPMRDS_TMC):
-        ''' Take in NPMRDS_TMC DF and TMAS_DATA_FILE path as input paramter, join on station ID, return Joined DF'''
-        # Read in TMAS_Data file as a csv
-        TMAS_Data = dd.read_csv(self.tmas.TMAS_DATA_FILE, dtype = {'STATION_ID': 'object'}, low_memory = False)
-        
-        # Filter TMAS_Data to only include Middlesex County in MA and save computed dataframe
-        TMAS_Data_Filtered = TMAS_Data[(TMAS_Data['STATE_NAME'] == 'MA') & (TMAS_Data['COUNTY_NAME'] == 'Middlesex County')]
-        TMAS_Data_Filtered = TMAS_Data_Filtered.compute()
-        
-        # Add a column to the dataframe called 'measurement_tstamp', the name of the datetime column in NPMRDS_TMC
-        # that creates a datetime column given data in the existing dataframe
-        TMAS_Data_Filtered['measurement_tstamp'] = TMAS_Data_Filtered.apply(lambda row: datetime.datetime(2000 + int(row['YEAR']),int(row['MONTH']), int(row['DAY']), int(row['HOUR'])), axis = 1)
-        
-        # Join NPMRDS_TMC with TMAS_Data
-        NPMRDS_TMC_TMAS = pd.merge(NPMRDS_TMC, TMAS_Data_Filtered,on=['STATION_ID', 'measurement_tstamp'], how = 'inner')    
+        """
+        Take in NPMRDS_TMC DataFrame and TMAS_DATA_FILE path as input parameters,
+        join on station ID, and return the joined DataFrame.
+
+        Performs the join in a chunkwise manner on NPMRDS_TMC for memory efficiency.
+        Tracks progress based on the number of chunks processed.
+
+        """
+        # Set chunksize for memory efficient processing of NPMRDS_TMC
+        chunksize = 5000000   # Adjust this value based on your memory constraints and file size
+
+        # Read TMAS data .pkl file into a DataFrame
+        TMAS_Data = pickle.load(open(self.tmas.TMAS_DATA_FILE, "rb"))
+        NPMRDS_TMC['STATION_ID'] = NPMRDS_TMC['STATION_ID'].astype(str)
+        TMAS_Data['STATION_ID'] = TMAS_Data['STATION_ID'].astype(str)
+
+        print("TMAS pkl Read")
+       # '''
+        # Create a pandas Series for the datetime values
+        datetime_series = pd.to_datetime(
+        {'year': 2000 + TMAS_Data['YEAR'],
+        'month': TMAS_Data['MONTH'],
+        'day': TMAS_Data['DAY'],
+        'hour': TMAS_Data['HOUR']})
+
+        TMAS_Data['measurement_tstamp'] = datetime_series
+        print("merging")
+
+        # Split NPMRDS_TMC into chunks
+        chunks = []
+        for i in range(0, len(NPMRDS_TMC), chunksize):
+            # Get the end index for the current chunk
+            end_index = min(i + chunksize, len(NPMRDS_TMC))  # Limit to DataFrame length
+            chunks.append(NPMRDS_TMC[i:end_index])
+        print("Split into Chunks")
+        total_chunks = len(chunks)  # Get total number of chunks
+        # Track processed chunks to monitor progress
+        processed_chunks = 0
+        breakpoint()
+        # Process NPMRDS_TMC chunks
+        joined_data = []
+        for chunk in chunks:
+            # Perform the join on the current chunk with the entire TMAS_Data
+            chunk_joined = pd.merge(chunk, TMAS_Data, on=['STATION_ID', 'measurement_tstamp'], how='inner')
+            joined_data.append(chunk_joined)
+
+            # Update processed chunks counter and calculate percentage complete
+            processed_chunks += 1
+            percentage_complete = (processed_chunks / total_chunks) * 100
+
+            # Print progress message
+            print(f"Processing complete: {percentage_complete:.2f}%")
+
+        # Combine all joined chunks into a single DataFrame
+        NPMRDS_TMC_TMAS = pd.concat(joined_data)
         
         return NPMRDS_TMC_TMAS
 
     def TMC_Join(self, NPMRDS_Join):
         ''' Read in NPMRDS Data frame that has All, Pass, and Truck and join with TMC_ID and TMC_Station'''
-   
+        dtype_dict = {
+            'STATION_ID': str,
+        }
         # Read in TMC Station file as a csv, rename Tmc column to tmc_code
-        TMC_Station = pd.read_csv(self.tmc.TMC_STATION_FILE)
+        TMC_Station = pd.read_csv(self.tmc.TMC_STATION_FILE, dtype= dtype_dict)
         TMC_Station = TMC_Station.rename(columns = {'Tmc': 'tmc_code'})
         
         # Read in TMC ID file as a csv, rename tmc column to tmc_code
@@ -217,7 +237,8 @@ class data(object):
         #Join NPMRDS Data frame with TMC Station and TMC ID df on tmc_code
         NPMRDS_TMC = pd.merge(NPMRDS_Join, TMC_Station,on=['tmc_code'], how = 'inner') 
         NPMRDS_TMC = pd.merge(NPMRDS_TMC, TMC_ID,on=['tmc_code'], how = 'inner')
-            
+        # UNCOMMENT LINE BELOW IF DOING QAQC CHECKS
+        #pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
         return NPMRDS_TMC
 
     # AI-centric functions ----------------------------------------------------------------------------------------------------------------------
@@ -293,19 +314,6 @@ class data(object):
                 self.prepared_dataset.insert(len(self.prepared_dataset.columns), col_name_after, df_after[col])
                 self.calculated_columns.append(col_name_before)
                 self.calculated_columns.append(col_name_after)
-        
-    """
-    This function modifies the class variable 'self.prepared_dataset' by adding 
-    a new column 'nearest_VOL' containing the VOL value of the nearest point 
-    based on measurement_tstamp, TMC_Value, f_system, start_latitude and 
-    start_longitude.
-    """
-    def calculate_nearest_vol(self):
-        # Group by the three primary columns
-        grouped_df = self.prepared_dataset.groupby(['measurement_tstamp', 'TMC_Value', 'f_system'])
-        # Apply the function to each group and update the dataframe in-place
-        self.prepared_dataset = grouped_df.apply(calculate_vol).reset_index()
-        self.calculated_columns.append('nearest_VOL')
 
     # Apply all normalizations to dataset here by looping through self.norm_functions and calling all (ORDER MATTERS)
     def apply_normalization(self):
@@ -346,7 +354,7 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data location
-            self.TMAS_DATA_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/TMAS_Class_Clean_2021.csv'
+            self.TMAS_DATA_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl'
             self.df = None
 
         def read(self):
@@ -363,9 +371,9 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data locations
-            self.NPMRDS_ALL_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/Middlesex_MA_2021_TMAS_Matches_ALL.csv'
-            self.NPMRDS_PASS_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/Middlesex_MA_2021_TMAS_Matches_PASSENGER.csv'
-            self.NPMRDS_TRUCK_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/Middlesex_MA_2021_TMAS_Matches_TRUCKS.csv'
+            self.NPMRDS_ALL_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_ALL.csv'
+            self.NPMRDS_PASS_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_PASS.csv'
+            self.NPMRDS_TRUCK_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_TRUCK.csv'
         
         def CombineNPMRDS(self):
             '''Read in NPMRDS Files as input parameters, join them on tmc_code and measurement_tstamp'''
@@ -381,12 +389,13 @@ class data(object):
             NPMRDS_Truck['measurement_tstamp'] = pd.to_datetime(NPMRDS_Truck['measurement_tstamp'])
             
             # Add Suffix to Truck data, not including join columns. Once joined all data will have a suffix
+            NPMRDS_All = NPMRDS_All.rename(columns = {c: c + '_All' for c in NPMRDS_All.columns if c not in ['tmc_code', 'measurement_tstamp']})
+            NPMRDS_Pass = NPMRDS_Pass.rename(columns = {c: c + '_Pass' for c in NPMRDS_Pass.columns if c not in ['tmc_code', 'measurement_tstamp']})
             NPMRDS_Truck = NPMRDS_Truck.rename(columns = {c: c + '_Truck' for c in NPMRDS_Truck.columns if c not in ['tmc_code', 'measurement_tstamp']})
 
             # Combine all TMAS .csv
-            NPMRDS_Join = pd.merge(NPMRDS_All, NPMRDS_Pass, on=['tmc_code','measurement_tstamp'], how = 'inner', suffixes = ('_All', '_Pass'))
+            NPMRDS_Join = pd.merge(NPMRDS_All, NPMRDS_Pass, on=['tmc_code','measurement_tstamp'], how = 'inner')
             NPMRDS_Join = pd.merge(NPMRDS_Join, NPMRDS_Truck,on=['tmc_code','measurement_tstamp'], how = 'inner')
-
             return NPMRDS_Join
 
     class tmc_data(object):
@@ -395,5 +404,5 @@ class data(object):
         def __init__(self) -> None:
 
             # setup default data locations
-            self.TMC_STATION_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/TMC_2021.csv'
-            self.TMC_ID_FILE = r's3://prod.sdc.dot.gov.team.roadii/UseCaseR29-MobilityCounts/NPMRDS_TMC_TMAS_Join/TMC_Identification.csv'
+            self.TMC_STATION_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\TMC_2021Random_US_Subset_500.csv'
+            self.TMC_ID_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\TMC_Identification.csv'
