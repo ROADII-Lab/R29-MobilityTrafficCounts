@@ -43,7 +43,7 @@ def main(data_path):
 
     use_custom_columns = True  # CHANGE TO FALSE IF NOT USING COLUMNS ABOVE
 
-    # Check and handle previously normalized data
+    # Check and handle previously read data that was saved as a .pkl file
     norm_data_path = "../data/norm_data.pkl"
     if os.path.isfile(norm_data_path):
         print("Loading from cache (.pkl file)...")

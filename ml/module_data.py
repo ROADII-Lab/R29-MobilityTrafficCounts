@@ -42,15 +42,14 @@ class data(object):
         self.norm_functions = ['tmc_norm', 'tstamp_norm', 'startdate_norm', 'density_norm', 'time_before_after']
 
 
-        # setup data sources
+        # setup data sources - Uncomment if running joins for creating dataset
         #self.tmas = self.tmas_data()
-        
-        
+        #self.tmas.read()
         #self.npmrds = self.npmrds_data()
-        # self.tmc = self.tmc_data()
+        #self.tmc = self.tmc_data()
         
         # output
-        self.always_cache_data = False
+        self.always_cache_data = True
         self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
         self.prejoin = r'../data/prejoin.pkl'
         # pre-defined features for input into the AI model
@@ -152,8 +151,11 @@ class data(object):
             return self.join_and_save()
         else:
             try:
-                print(self.OUTPUT_FILE_PATH)
-                final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
+                # If handle input data file differently if .pkl or .csv
+                if (self.OUTPUT_FILE_PATH.endswith('.pkl')):
+                    final_output = pickle.load(open(self.OUTPUT_FILE_PATH, "rb"))
+                else:
+                    final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
                 print("Loading cached data...")
                 self.dataset = final_output
             except Exception as err:
@@ -175,7 +177,7 @@ class data(object):
         chunksize = 5000000   # Adjust this value based on your memory constraints and file size
 
         # Read TMAS data .pkl file into a DataFrame
-        TMAS_Data = pickle.load(open(self.tmas.TMAS_DATA_FILE, "rb"))
+        TMAS_Data = pickle.load(open(self.tmas.TMAS_PKL_FILE, "rb"))
         NPMRDS_TMC['STATION_ID'] = NPMRDS_TMC['STATION_ID'].astype(str)
         TMAS_Data['STATION_ID'] = TMAS_Data['STATION_ID'].astype(str)
 
@@ -354,15 +356,54 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data location
-            self.TMAS_DATA_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl'
+            self.TMAS_DATA_FILE = r'../data/TMAS_Class_Clean_2021.csv'
+            self.TMAS_PKL_FILE = r'../data/TMAS_Class_Clean_2021.pkl'
             self.df = None
 
         def read(self):
             # read in raw TMAS data
             try:
-                self.df = dd.read_csv(self.TMAS_DATA_FILE, dtype = {'STATION_ID': 'object'}, low_memory = False)
+                dtype_dict = {
+                'STATE': int,
+                'STATION_ID': str,
+                'DIR': float,  
+                'DATE': str,  
+                'YEAR': int,
+                'MONTH': int,
+                'DAY': int,  
+                'HOUR': int,
+                'DAY_TYPE': str,
+                'PEAKING': str,
+                'VOL': float,
+                'F_SYSTEM': float,
+                'URB_RURAL': str,
+                'COUNTY': int,
+                'REPCTY': str,
+                'ROUTE_SIGN': float,
+                'ROUTE_NUMBER': str,
+                'LAT': float,
+                'LONG': float,
+                'STATE_NAME': str,
+                'COUNTY_NAME': str,
+                'HPMS_TYPE10': float,
+                'HPMS_TYPE25': float,
+                'HPMS_TYPE40': float,
+                'HPMS_TYPE50': float,
+                'HPMS_TYPE60': float,
+                'HPMS_ALL': float,
+                'NOISE_AUTO': float,
+                'NOISE_MED_TRUCK': float,
+                'NOISE_HVY_TRUCK': float,
+                'NOISE_BUS': float,
+                'NOISE_MC': float,
+                'NOISE_ALL': float
+                }
+                TMAS_DATA = pd.read_csv(self.TMAS_DATA_FILE, dtype= dtype_dict)
+                print("TMAS csv read")
+                pickle.dump(TMAS_DATA, open(self.TMAS_PKL_FILE, "wb"))
+                print("dumped to pkl")
             except OSError as err:
-                print("OS file read error:", err)
+                print("TMAS OS file read error:", err)
                 self.df = None
             
     class npmrds_data(object):
@@ -371,9 +412,9 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data locations
-            self.NPMRDS_ALL_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_ALL.csv'
-            self.NPMRDS_PASS_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_PASS.csv'
-            self.NPMRDS_TRUCK_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\US_500_TRUCK.csv'
+            self.NPMRDS_ALL_FILE = r'../data/US_Subset/US_500_ALL.csv'
+            self.NPMRDS_PASS_FILE = r'../data/US_Subset/US_500_PASS.csv'
+            self.NPMRDS_TRUCK_FILE = r'../data/US_Subset/US_500_TRUCK.csv'
         
         def CombineNPMRDS(self):
             '''Read in NPMRDS Files as input parameters, join them on tmc_code and measurement_tstamp'''
@@ -404,5 +445,5 @@ class data(object):
         def __init__(self) -> None:
 
             # setup default data locations
-            self.TMC_STATION_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\TMC_2021Random_US_Subset_500.csv'
-            self.TMC_ID_FILE = r'C:\Users\Michael.Barzach\Documents\ROADII\US_Subset\TMC_Identification.csv'
+            self.TMC_STATION_FILE = r'../data/US_Subset/TMC_2021Random_US_Subset_500.csv'
+            self.TMC_ID_FILE = r'../data/US_Subset/TMC_Identification.csv'
