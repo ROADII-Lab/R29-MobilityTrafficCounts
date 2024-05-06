@@ -107,13 +107,13 @@ with tab1:
 			result_df = pd.DataFrame()
 			normalized_df = pd.DataFrame()
 			ai = module_ai.ai()
-			source_data = pd.DataFrame()
+			source_data = module_data.data()
 	elif 'dialog' not in st.session_state:
 			census_df = pd.DataFrame()
 			result_df = pd.DataFrame()
 			normalized_df = pd.DataFrame()
 			ai = module_ai.ai()
-			source_data = pd.DataFrame()
+			source_data = module_data.data()
 	else:
 		folder_path = st.session_state.dialog.GetPath() # folder_path will contain the path of the folder you have selected as string
 		census_df, result_df, normalized_df, ai, source_data = setup(folder_path)
