@@ -1,6 +1,10 @@
 import pandas as pd
 import pickle
 import csv
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates  # Import for time manipulation
+from matplotlib.ticker import ScalarFormatter
+import os
 
 
 def TMAS_to_pkl():
@@ -50,11 +54,89 @@ def TMAS_to_pkl():
     pickle.dump(TMAS_DATA, open(r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl', "wb"))
     print("dumped to pkl")
 
+def plotting_dataset():
+    print('loading data')
+    DATASET_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
+    
+    if DATASET_PATH.endswith('.pkl'):
+        output = pickle.load(open(DATASET_PATH, "rb"))
+    else:
+        output = pd.read_csv(DATASET_PATH, low_memory=False)
+    print("data loaded")
+
+    # Selecting a subset of the data if required
+    # Change value in ADDITIONAL_SUBSET and STATES to reflect subset you want
+    # If ADDITIONAL_SUBSET is empty, no subset is taken
+    ADDITIONAL_SUBSET = ''
+    STATES = ['RHODE ISLAND', 'VERMONT', 'NEW HAMPSHIRE', 'CONNECTICUT', 'MAINE', 'MASSACHUSETTS', 'NEW YORK', 'DELAWARE', 'PENNSYLVANIA', 'NEW JERSEY']
+    if ADDITIONAL_SUBSET != '':
+        output = output[output['State'].isin(STATES)]
+        SUBSET_TEXT = f'Selected Subset: {ADDITIONAL_SUBSET}, '
+    else:
+        SUBSET_TEXT = ''
+
+    # Ensure measurement_tstamp is a datetime object
+    output['measurement_tstamp'] = pd.to_datetime(output['measurement_tstamp'])
+
+    # Create a figure for the plots
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    # Plot 1: Histogram of all volume counts for the year
+    axes[0].hist(output['VOL'], bins=30, alpha=0.7)
+    axes[0].set_yscale('log')
+    scalar_formatter = ScalarFormatter()
+    scalar_formatter.set_scientific(False)
+    axes[0].yaxis.set_major_formatter(scalar_formatter)
+    axes[0].set_title('Annual Volume Histogram')
+    axes[0].set_xlabel('Volume (VOL)')
+    axes[0].set_ylabel('Count')
+
+    # Plot 2: Hourly averages for each day
+    for day, group_data in output.groupby(output['measurement_tstamp'].dt.dayofweek):
+        hourly_avg = group_data.groupby(group_data['measurement_tstamp'].dt.hour)['VOL'].mean()
+        axes[1].plot(hourly_avg.index, hourly_avg.values, marker='o', linestyle='-', label=f'Day {day+1}')
+    axes[1].set_xlabel('Hour of the Day')
+    axes[1].set_ylabel('Average Volume')
+    axes[1].set_title('Avg Hourly Volume by Day')
+    axes[1].set_xticks(range(0, 24, 4))
+    axes[1].legend(loc='upper left')
+
+    # Plot 3: Max volume per station
+    max_volume_per_station = output.groupby('STATION_ID')['VOL'].max().reset_index()
+    axes[2].hist(max_volume_per_station, bins=30, alpha=0.7)
+    axes[2].set_xlabel('Max Volume')
+    axes[2].set_ylabel('Count')
+    axes[2].set_title('Max Volume per Station')
+    axes[2].set_yscale('log')
+    axes[2].yaxis.set_major_formatter(scalar_formatter)
+
+    plt.tight_layout()
+    plt.show()
+
+    max_volume_per_station.rename(columns={'VOL': 'Max_VOL'}, inplace=True)  # Correctly renaming the column to 'Max_VOL'
+    # Extract rows for each station ID where the volume equals the maximum volume found
+    top_stations = pd.merge(output, max_volume_per_station, how='inner', left_on=['STATION_ID', 'VOL'], right_on=['STATION_ID', 'Max_VOL'])
+    top_stations = top_stations[['STATION_ID', 'VOL', 'County', 'State', 'road', 'intersection', 'measurement_tstamp']].sort_values(by='VOL', ascending=False).head(10)
+
+    # Save to CSV
+    csv_path = r'../data/US_Subset/Top_Stations_Max_Volume_Details.csv'
+    top_stations.to_csv(csv_path, index=False)
+    print(f"Top stations data saved to '{csv_path}'")
 
 def QAQC_Joins():
 
+    print('loading data')
+    DATASET_PATH =  r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
+    # Load the data
+    #handle input data file differently if .pkl or .csv
+    if (DATASET_PATH.endswith('.pkl')):
+        output = pickle.load(open(DATASET_PATH, "rb"))
+    else:
+        output = pd.read_csv(DATASET_PATH, low_memory=False)
+    print("data loaded")
+    
+    breakpoint()
 
-    output = pickle.load(open(r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl', "rb"))
     prejoin = pickle.load(open(r'../data/prejoin.pkl', "rb"))
     tmas = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl', "rb"))
     print('loaded test pkl files')
@@ -82,6 +164,7 @@ def QAQC_Joins():
     print("Stations missing in the output dataframe: " + str(missing_stations))
 
 
-TMAS_to_pkl()
+#TMAS_to_pkl()
 #QAQC_Joins()
+plotting_dataset()
 
