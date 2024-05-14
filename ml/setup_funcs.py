@@ -26,18 +26,15 @@ def test_model(ai, normalized_df, in_cols, target_col):
     # setup training / test data
     ai.features = in_cols
     ai.target = target_col
-    x_train, y_train, x_test, y_test = ai.format_training_data(normalized_df)
+    # x_train, y_train, x_test, y_test = ai.format_training_data(normalized_df)
 
     # load the model or use a model that's already loaded
-    if ai.model != None:
-        predictions, y_test, test_loss, accuracy = ai.test(ai.model, x_test, y_test)
-    else:
-        if(ai.model_load(x_test)):
-            predictions, y_test, test_loss, accuracy = ai.test(ai.model, x_test, y_test)
+    if ai.model != None or ai.test_loader == None:
+        predictions, y_test, test_loss, accuracy = ai.test(ai.model, ai.test_loader)
             
-        else:
-            print("No model loaded!")
-            return 0
+    else:
+        print("No model or data loaded!")
+        return 0
     
     return predictions, y_test, test_loss, accuracy
 
