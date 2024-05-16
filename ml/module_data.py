@@ -39,7 +39,7 @@ class data(object):
         self.normalized_dataset = None
         self.prepared_dataset = None
         self.calculated_columns = []
-        self.norm_functions = ['tmc_norm', 'tstamp_norm', 'startdate_norm', 'density_norm', 'time_before_after']
+        self.norm_functions = ['tmc_norm', 'tstamp_norm', 'density_norm', 'time_before_after']
         
         # output
         self.always_cache_data = True
@@ -61,7 +61,7 @@ class data(object):
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
-                                'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
+                                # 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
                                 # 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
@@ -96,7 +96,7 @@ class data(object):
         
         self.features_training_set = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                           
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
-                                'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
+                                # 'active_start_date', ## text field to normalize (yyyy-mm-dd hh:mm:ss +- time zone)
                                 # 'average_speed_All', # (int)
                                 'speed_All', # (int)
                                 'travel_time_seconds_All', # (float)
@@ -362,9 +362,13 @@ class data(object):
                 self.calculated_columns.append(col_name_after)
 
     # Apply all normalizations to dataset here by looping through self.norm_functions and calling all (ORDER MATTERS)
-    def apply_normalization(self):
+    def apply_normalization(self, training=True):
         # sort the data i) by road link TMC id; ii) then by timestamp
-        self.prepared_dataset = self.dataset[self.features_column_names].copy()
+        if training == True:
+            self.prepared_dataset = self.dataset[self.features_training_set].copy()
+        else:
+            self.prepared_dataset = self.dataset[self.features_column_names].copy()
+
         self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','measurement_tstamp'],ascending=[True,True])
         for function_name in self.norm_functions:
             method = getattr(self, function_name)
@@ -375,9 +379,9 @@ class data(object):
         self.features_column_names.extend(self.calculated_columns)
         self.features_training_set.extend(self.calculated_columns)  
 
-    def normalized(self):
+    def normalized(self, training=True):
         # Call apply_normalization to run all normalization functions (that modify the prepared dataset)
-        self.apply_normalization()
+        self.apply_normalization(training)
 
         # Create normalized dataset from prepared dataset
         self.normalized_dataset = self.prepared_dataset[self.features_column_names].copy()
