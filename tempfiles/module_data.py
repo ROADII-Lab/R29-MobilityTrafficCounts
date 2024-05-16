@@ -40,22 +40,18 @@ class data(object):
         self.prepared_dataset = None
         self.calculated_columns = []
         self.norm_functions = ['tmc_norm', 'tstamp_norm', 'startdate_norm', 'density_norm', 'time_before_after']
+
+
+        # setup data sources - Uncomment if running joins for creating dataset
+        #self.tmas = self.tmas_data()
+        #self.tmas.read()
+        #self.npmrds = self.npmrds_data()
+        #self.tmc = self.tmc_data()
         
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_500_f.pkl'
-        self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/' 
+        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
         self.prejoin = r'../data/prejoin.pkl'
-
-
-        # setup data sources
-        self.tmas = self.tmas_data()
-        if not os.path.isfile(self.tmas.TMAS_PKL_FILE):
-            # tmas.read() opens the csv and saves as pkl for performance during later joins
-            # if the pkl file already exists, this doesn't need to be run
-            self.tmas.read()
-        self.npmrds = self.npmrds_data()
-        self.tmc = self.tmc_data()
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
@@ -127,24 +123,6 @@ class data(object):
 
         self.features_target = "VOL"
 
-    
-    def split_into_pkl_dir(self, year):
-        # Ensure the directory exists
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-
-        # Iterate through the unique STATION_ID values
-        for station_id in self.dataset['STATION_ID'].unique():
-            # Filter the dataframe for the current STATION_ID
-            df_station = self.dataset[self.dataset['STATION_ID'] == station_id]
-            
-            # Define the filename
-            filename = f"{station_id}_{year}.pkl"
-            filepath = os.path.join(self.output_dir, filename)
-            
-            # Save the dataframe as a .pkl file
-            df_station.to_pickle(filepath)
-
     def join_and_save(self):
 
         # Check if the file exists at self.prejoin
@@ -157,18 +135,13 @@ class data(object):
             print("NPMRDS Joined")
             NPMRDS_TMC = self.TMC_Join(NPMRDS_Join)
             print("TMC AND NPMRDS Joined")
-            pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
 
         final_output = self.TMAS_Join(NPMRDS_TMC)
-        print("Joined with TMAS, now outputting to pkl (larger file)")
+        print("Joined with TMAS, now outputting to pkl")
         pickle.dump(final_output, open(self.OUTPUT_FILE_PATH, "wb"))
         print("Data output to pkl")
 
         self.dataset = final_output
-
-        print('Outputting into directory of .pkl files')
-        self.split_into_pkl_dir('2021')
-        print(f'directory created at: {self.output_dir}')
 
         return final_output
 
@@ -183,7 +156,7 @@ class data(object):
                     final_output = pickle.load(open(self.OUTPUT_FILE_PATH, "rb"))
                 else:
                     final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
-                print("Loading cached data...")
+                print("Data file read...")
                 self.dataset = final_output
             except Exception as err:
                 print(str(err))
@@ -218,9 +191,6 @@ class data(object):
         'hour': TMAS_Data['HOUR']})
 
         TMAS_Data['measurement_tstamp'] = datetime_series
-
-        # Rename state column in TMAS data to match NPMRDS_TMC
-        TMAS_Data = TMAS_Data.rename(columns = {'STATE_NAME': 'state'})
         print("merging")
 
         # Split NPMRDS_TMC into chunks
@@ -233,11 +203,12 @@ class data(object):
         total_chunks = len(chunks)  # Get total number of chunks
         # Track processed chunks to monitor progress
         processed_chunks = 0
+        breakpoint()
         # Process NPMRDS_TMC chunks
         joined_data = []
         for chunk in chunks:
             # Perform the join on the current chunk with the entire TMAS_Data
-            chunk_joined = pd.merge(chunk, TMAS_Data, on=['STATION_ID', 'measurement_tstamp', 'state', 'DIR'], how='inner')
+            chunk_joined = pd.merge(chunk, TMAS_Data, on=['STATION_ID', 'measurement_tstamp'], how='inner')
             joined_data.append(chunk_joined)
 
             # Update processed chunks counter and calculate percentage complete
@@ -303,19 +274,8 @@ class data(object):
         # sort the data only by timestamp
         self.prepared_dataset.sort_values('measurement_tstamp', inplace=True)
         # format the timestamps
-        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp'], errors='coerce')
-        # Add new columns with year, month, day, hour, and dayofweek (integers)
-        self.prepared_dataset['year'] = self.prepared_dataset['measurement_tstamp'].dt.year.astype(int)
-        self.calculated_columns.append('year')
-        self.prepared_dataset['month'] = self.prepared_dataset['measurement_tstamp'].dt.month.astype(int)
-        self.calculated_columns.append('month')
-        self.prepared_dataset['day'] = self.prepared_dataset['measurement_tstamp'].dt.day.astype(int)
-        self.calculated_columns.append('day')
-        self.prepared_dataset['hour'] = self.prepared_dataset['measurement_tstamp'].dt.hour.astype(int)
-        self.calculated_columns.append('hour')
-        self.prepared_dataset['dayofweek'] = self.prepared_dataset['measurement_tstamp'].dt.weekday.astype(int)
-        self.calculated_columns.append('dayofweek')
         # convert 'measurement_tstamp' from (yyyy-mm-dd hh:mm:ss) to integer seconds
+        self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp'], errors='coerce')
         self.prepared_dataset['measurement_tstamp'] = self.prepared_dataset['measurement_tstamp'].interpolate(method='linear')
         self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).astype('int64') // 10**9
 
@@ -337,12 +297,12 @@ class data(object):
     # Creates time before and after datasets in the prepared_dataset
     # This should always be last normalization called since it creates columns based on other calculated columns
     def time_before_after(self):
-        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp', 'DIR'],ascending=[True,True,True])
+        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
         # create a "before" and an "after" dataframe representing shift by -/+ one time increment
-        df_before = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value', 'DIR']).shift(periods=-1)
+        df_before = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value']).shift(periods=-1)
         #df_before = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=-1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
-        df_after = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value', 'DIR']).shift(periods=1)
+        df_after = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value']).shift(periods=1)
         #df_after = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=1)
         #the above line commented out is a way to display in the debug window that the groupby() worked as intended, making each group smaller/showing that the shifting took place on the correct indices
         #Columns to exclude from time before/after - mostly columns that won't change for a given time period shift
@@ -452,9 +412,9 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data locations
-            self.NPMRDS_ALL_FILE = r'..\data\US_500/US_500_Fixed_ALL.csv'
-            self.NPMRDS_PASS_FILE = r'..\data\US_500/US_500_Fixed_PASS.csv'
-            self.NPMRDS_TRUCK_FILE = r'..\data\US_500/US_500_Fixed_TRUCK.csv'
+            self.NPMRDS_ALL_FILE = r'../data/US_Subset/US_500_ALL.csv'
+            self.NPMRDS_PASS_FILE = r'../data/US_Subset/US_500_PASS.csv'
+            self.NPMRDS_TRUCK_FILE = r'../data/US_Subset/US_500_TRUCK.csv'
         
         def CombineNPMRDS(self):
             '''Read in NPMRDS Files as input parameters, join them on tmc_code and measurement_tstamp'''
@@ -485,5 +445,5 @@ class data(object):
         def __init__(self) -> None:
 
             # setup default data locations
-            self.TMC_STATION_FILE = r'..\data\US_500/TMC_2021Random_US_Subset_2.csv'
-            self.TMC_ID_FILE = r'..\data\US_500/TMC_Identification.csv'
+            self.TMC_STATION_FILE = r'../data/US_Subset/TMC_2021Random_US_Subset_500.csv'
+            self.TMC_ID_FILE = r'../data/US_Subset/TMC_Identification.csv'

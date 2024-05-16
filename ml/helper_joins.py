@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates  # Import for time manipulation
 from matplotlib.ticker import ScalarFormatter
 import os
+import module_data
 
+def run_joins():
+    # init data module
+    source_data = module_data.data()
+    source_data.join_and_save()
 
 def TMAS_to_pkl():
     # File path
@@ -126,7 +131,7 @@ def plotting_dataset():
 def QAQC_Joins():
 
     print('loading data')
-    DATASET_PATH =  r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
+    DATASET_PATH =  r'../data/NPMRDS_TMC_TMAS_US_SUBSET_500_f.pkl'
     # Load the data
     #handle input data file differently if .pkl or .csv
     if (DATASET_PATH.endswith('.pkl')):
@@ -135,12 +140,9 @@ def QAQC_Joins():
         output = pd.read_csv(DATASET_PATH, low_memory=False)
     print("data loaded")
     
-    breakpoint()
-
     prejoin = pickle.load(open(r'../data/prejoin.pkl', "rb"))
-    tmas = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl', "rb"))
+    #tmas = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl', "rb"))
     print('loaded test pkl files')
-    breakpoint()
     goutput = output.groupby(['tmc_code'])
     gprejoin = prejoin.groupby(['tmc_code'])
     print('Number of unique TMCs before Join: ' + str(len(gprejoin)))
@@ -153,18 +155,52 @@ def QAQC_Joins():
     print('Number of unique TMCs/times before Join: ' + str(len(gprejoin)))
     print('Number of unique TMCs/times after join: ' + str(len(goutput)))
     
-    # check for null values from TMC station
 
-    # Assuming your dataframes are named 'df_prejoin' and 'df_output'
     prejoin_station_ids = set(prejoin['STATION_ID'])
     output_station_ids = set(output['STATION_ID'])
 
     missing_stations = prejoin_station_ids - output_station_ids
 
-    print("Stations missing in the output dataframe: " + str(missing_stations))
+    print(f"{len(missing_stations)} stations missing in the output dataframe: " + str(missing_stations))
+
+def generate_available_stations():
+    # Define the path to your pickle file
+    pickle_filepath = r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2021.pkl"
+
+    # Define the desired output CSV filepath (replace with your chosen path)
+    output_filepath = r"C:\Users\Michael.Barzach\Documents\ROADII\TMAS Data\tmas21_unique.csv"
+
+    # Load data from the pickle file
+    with open(pickle_filepath, 'rb') as f:
+        data = pickle.load(f)
+
+    # check if 'STATION_ID' and 'STATE_NAME' exist
+    if not all(col in data.columns for col in ['STATION_ID', 'STATE_NAME']):
+        raise ValueError("Missing required columns: 'STATION_ID' and 'STATE_NAME'")
+
+    # Ensure 'STATION_ID' is a string type
+    data['STATION_ID'] = data['STATION_ID'].astype(str)
+
+    # Group by station ID and state name, get size (count) and reset index
+    unique_combos = data.groupby(['STATION_ID', 'STATE_NAME']).size().to_frame(name='count').reset_index()
+
+    # Select only 'STATION_ID' and 'STATE_NAME' columns
+    selected_columns = ['STATION_ID', 'STATE_NAME']
+    unique_combos = unique_combos[selected_columns]  # Select desired columns
+
+    # Save unique combinations to CSV
+    unique_combos.to_csv(output_filepath, index=False)
+
+    print(f"Successfully saved unique combinations of 'STATION_ID' and 'STATE_NAME' to {output_filepath}")
+
+def main():
+    #TMAS_to_pkl()
+    QAQC_Joins()
+    #plotting_dataset()
+    #run_joins()
+    #generate_available_stations()
 
 
-#TMAS_to_pkl()
-#QAQC_Joins()
-plotting_dataset()
 
+if __name__ == "__main__":
+    main()
