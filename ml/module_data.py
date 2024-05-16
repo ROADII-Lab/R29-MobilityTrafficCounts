@@ -49,6 +49,7 @@ class data(object):
 
 
         # setup data sources
+        '''
         self.tmas = self.tmas_data()
         if not os.path.isfile(self.tmas.TMAS_PKL_FILE):
             # tmas.read() opens the csv and saves as pkl for performance during later joins
@@ -56,6 +57,7 @@ class data(object):
             self.tmas.read()
         self.npmrds = self.npmrds_data()
         self.tmc = self.tmc_data()
+        '''
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)

@@ -14,7 +14,7 @@ def run_joins():
 
 def TMAS_to_pkl():
     # File path
-    TMAS_path = r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\TMAS Data\TMAS 2021\TMAS_Class_Clean_2021.csv'
+    TMAS_path = r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2022.csv"
     dtype_dict = {
                 'STATE': int,
                 'STATION_ID': str,
@@ -56,7 +56,7 @@ def TMAS_to_pkl():
     print(numstations)
     breakpoint()
 
-    pickle.dump(TMAS_DATA, open(r'C:\Users\Michael.Barzach\Documents\ROADII\TMAS_Class_Clean_2021.pkl', "wb"))
+    pickle.dump(TMAS_DATA, open(r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2022.pkl", "wb"))
     print("dumped to pkl")
 
 def plotting_dataset():
@@ -164,11 +164,14 @@ def QAQC_Joins():
     print(f"{len(missing_stations)} stations missing in the output dataframe: " + str(missing_stations))
 
 def generate_available_stations():
+
+    # Convert TMAS to pkl
+    TMAS_to_pkl()
     # Define the path to your pickle file
-    pickle_filepath = r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2021.pkl"
+    pickle_filepath = r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2022.pkl"
 
     # Define the desired output CSV filepath (replace with your chosen path)
-    output_filepath = r"C:\Users\Michael.Barzach\Documents\ROADII\TMAS Data\tmas21_unique.csv"
+    output_filepath = r"C:\Users\Michael.Barzach\Documents\ROADII\TMAS Data\tmas22_unique.csv"
 
     # Load data from the pickle file
     with open(pickle_filepath, 'rb') as f:
@@ -195,10 +198,10 @@ def generate_available_stations():
 
 def main():
     #TMAS_to_pkl()
-    QAQC_Joins()
+    #QAQC_Joins()
     #plotting_dataset()
     #run_joins()
-    #generate_available_stations()
+    generate_available_stations()
 
 
 
