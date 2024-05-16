@@ -32,15 +32,17 @@ class ai:
     model_top_loss = 100                                        # placeholding for the current top model's test loss
     model_filename_root = "../models/model_"                    # default model filename
     model_filename = None                                       # placeholder for model filename
-    model_size = 100                                            # number of parameters for the hidden network layer
-    training_epochs = 2500                                      # default number of epochs to train the network for
-    training_batch_size = 200000                                # number of records we *think* we can fit into the GPU...
+    model_size = 1000                                           # number of parameters for the hidden network layer
+    train_loader = None                                         # placeholder for the training dataloader
+    test_loader = None                                          # placeholder for the test dataloader
+    training_epochs = 1500                                      # default number of epochs to train the network for
+    training_batch_size = 100000                                # number of records we *think* we can fit into the GPU...
     training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
     testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
-    training_learning_rate = 0.035                              # default network learning rate
+    training_learning_rate = 0.05                               # default network learning rate
     test_interval = 100                                         # model testing interval during training
     pdiffGoal = 0.15                        
 
@@ -203,7 +205,7 @@ class ai:
     def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate):
         # Check if multiple GPUs are available and wrap the model using DataParallel
         if torch.cuda.device_count() > 1:
-            print(f"Let's use {torch.cuda.device_count()} GPUs!")
+            print(f"Using {torch.cuda.device_count()} GPUs!")
             torch.cuda.synchronize()
             model = nn.DataParallel(model)
 
@@ -212,9 +214,9 @@ class ai:
 
         # Convert training and testing data into PyTorch datasets and dataloaders
         train_dataset = TensorDataset(x_train, y_train)
-        train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
+        self.train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
         test_dataset = TensorDataset(x_test, y_test)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
+        self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
         # Define the loss function and optimizer
         criterion = nn.HuberLoss(delta=500)
@@ -238,7 +240,7 @@ class ai:
                 epoch_start = time.time()  # Start time of the epoch
                 model.train()
                 total_loss = 0
-                for x_batch, y_batch in train_loader:
+                for x_batch, y_batch in self.train_loader:
                     x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
                     # Forward pass
                     outputs = model(x_batch)
@@ -249,7 +251,7 @@ class ai:
                     optimizer.step()
                     total_loss += loss.item()
 
-                average_loss = total_loss / len(train_loader)
+                average_loss = total_loss / len(self.train_loader)
                 epoch_duration = time.time() - epoch_start  # Calculate duration of the epoch
 
                 # Update and display the chart
@@ -264,7 +266,7 @@ class ai:
                 print(f'Epoch [{epoch+1}/{epochs}], Loss: {average_loss:.4f}, Time: {epoch_duration:.2f} sec')
 
                 if (epoch+1) % self.test_interval == 0:
-                    predictions, y_test, test_loss, test_accuracy  = self.test(model, test_loader)
+                    predictions, y_test, test_loss, test_accuracy  = self.test(model, self.test_loader)
                     self.plot_convergence(predictions, y_test)
                 
                     print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
@@ -335,7 +337,7 @@ class LinearNN(nn.Module):
         self.bn2 = nn.BatchNorm1d(layer_size)
         self.fc3 = nn.Linear(int(layer_size), layer_size)
         self.bn3 = nn.BatchNorm1d(layer_size)
-        self.fc4 = nn.Linear(layer_size, layer_size // 2)  # Reduce layer size
+        self.fc4 = nn.Linear(layer_size, layer_size // 2) 
         self.bn4 = nn.BatchNorm1d(layer_size // 2)
         self.fc5 = nn.Linear(layer_size // 2, 1)  # Output layer for regression
 
