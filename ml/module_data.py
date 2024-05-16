@@ -339,7 +339,7 @@ class data(object):
     # Creates time before and after datasets in the prepared_dataset
     # This should always be last normalization called since it creates columns based on other calculated columns
     def time_before_after(self):
-        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp', 'DIR'],ascending=[True,True,True])
+        self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp', 'DIR'],ascending=[True,True,True, True])
         # create a "before" and an "after" dataframe representing shift by -/+ one time increment
         df_before = self.prepared_dataset.groupby(by=['tmc_code','TMC_Value', 'DIR']).shift(periods=-1)
         #df_before = self.prepared_dataset.groupby(by=['tmc_code','measurement_tstamp']).shift(periods=-1)

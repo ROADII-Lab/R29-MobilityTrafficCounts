@@ -54,7 +54,6 @@ def TMAS_to_pkl():
     print("csv read")
     numstations = TMAS_DATA['STATION_ID'].nunique(dropna=True)
     print(numstations)
-    breakpoint()
 
     pickle.dump(TMAS_DATA, open(r"C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\TMAS_Class_Clean_2022.pkl", "wb"))
     print("dumped to pkl")
