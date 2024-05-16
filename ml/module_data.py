@@ -80,6 +80,7 @@ class data(object):
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
+                                'DIR',
                                 # 'MONTH', # (int)
                                 # 'DAY', # (int)
                                 # 'HOUR', # (int)
@@ -114,6 +115,7 @@ class data(object):
                                 'route_sign',
                                 'thrulanes',
                                 'zip',
+                                'DIR',
                                 # 'MONTH', # (int)
                                 # 'DAY', # (int)
                                 # 'HOUR', # (int)

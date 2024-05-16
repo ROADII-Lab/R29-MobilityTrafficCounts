@@ -195,12 +195,18 @@ def generate_available_stations():
 
     print(f"Successfully saved unique combinations of 'STATION_ID' and 'STATE_NAME' to {output_filepath}")
 
+def load_pkl():
+    data = pickle.load(open(r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_US_SUBSET_500_2021_v2.pkl', "rb"))
+    breakpoint()
+
 def main():
     #TMAS_to_pkl()
     #QAQC_Joins()
     #plotting_dataset()
     #run_joins()
-    generate_available_stations()
+    #generate_available_stations()
+    load_pkl()
+
 
 
 
