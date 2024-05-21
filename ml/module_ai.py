@@ -26,7 +26,7 @@ class ai:
     # settings / object properties
     features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
     target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
-    training_split = 0.05                                       # controls the amount of data to use for train/test
+    training_split = 0.25                                       # controls the amount of data to use for train/test
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 100                                        # placeholding for the current top model's test loss
@@ -35,15 +35,15 @@ class ai:
     model_size = 1000                                           # number of parameters for the hidden network layer
     train_loader = None                                         # placeholder for the training dataloader
     test_loader = None                                          # placeholder for the test dataloader
-    training_epochs = 1500                                      # default number of epochs to train the network for
-    training_batch_size = 100000                                # number of records we *think* we can fit into the GPU...
-    training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
+    training_epochs = 500                                       # default number of epochs to train the network for
+    training_batch_size = 85000                                 # number of records we *think* we can fit into the GPU...
+    training_workers = 8                                        # number of dataloader workers to use for loading training data into the GPU
     testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
     training_learning_rate = 0.05                               # default network learning rate
-    test_interval = 100                                         # model testing interval during training
+    test_interval = 50                                          # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
@@ -125,6 +125,7 @@ class ai:
 
         # Split the data into training and testing sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.training_split, random_state=42,)
+        print("Input Features:", list(X_train))
 
         # Output some basic debug info
         print("Training set size is", len(X_train),"records.")
@@ -173,7 +174,7 @@ class ai:
         if predicted_cpu.shape != known_cpu.shape:
             raise ValueError("The two tensors must be of the same shape!")
 
-        print(known_cpu.shape[0])
+        print("Test set size =", known_cpu.shape[0])
 
         SST = torch.sum(torch.pow(known_cpu - torch.mean(known_cpu), 2))
         SSR = torch.sum(torch.pow((known_cpu - predicted_cpu), 2))
@@ -313,8 +314,6 @@ class ai:
         R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
         average_test_loss = total_loss / len(test_loader)
 
-        # print(all_predictions)
-        # print(all_y_test)
         print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
         
         return all_predictions, all_y_test, average_test_loss, (R2, Within10)
@@ -346,13 +345,13 @@ class LinearNN(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
-        # x = self.dropout(x)
+        x = self.dropout(x)
         x = F.relu(self.bn2(self.fc2(x)))
         x = self.dropout(x)
         x = F.relu(self.bn3(self.fc3(x)))
         x = self.dropout(x)
         x = F.relu(self.bn4(self.fc4(x)))
-        # x = self.dropout(x)
+        x = self.dropout(x)
         x = self.fc5(x)  # No activation function here as it's a regression task
 
         return x

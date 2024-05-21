@@ -364,10 +364,7 @@ class data(object):
     # Apply all normalizations to dataset here by looping through self.norm_functions and calling all (ORDER MATTERS)
     def apply_normalization(self, training=True):
         # sort the data i) by road link TMC id; ii) then by timestamp
-        if training == True:
-            self.prepared_dataset = self.dataset[self.features_training_set].copy()
-        else:
-            self.prepared_dataset = self.dataset[self.features_column_names].copy()
+        self.prepared_dataset = self.dataset[self.features_column_names].copy()
 
         self.prepared_dataset = self.prepared_dataset.sort_values(by=['tmc_code','measurement_tstamp'],ascending=[True,True])
         for function_name in self.norm_functions:
