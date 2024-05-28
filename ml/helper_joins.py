@@ -60,8 +60,8 @@ def TMAS_to_pkl():
 
 def plotting_dataset():
     print('loading data')
-    DATASET_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET.pkl'
-    
+    DATASET_PATH =  r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl'
+
     if DATASET_PATH.endswith('.pkl'):
         output = pickle.load(open(DATASET_PATH, "rb"))
     else:
@@ -106,7 +106,7 @@ def plotting_dataset():
     axes[1].legend(loc='upper left')
 
     # Plot 3: Max volume per station
-    max_volume_per_station = output.groupby('STATION_ID')['VOL'].max().reset_index()
+    max_volume_per_station = output.groupby('STATION_ID')['VOL'].max()
     axes[2].hist(max_volume_per_station, bins=30, alpha=0.7)
     axes[2].set_xlabel('Max Volume')
     axes[2].set_ylabel('Count')
@@ -116,7 +116,7 @@ def plotting_dataset():
 
     plt.tight_layout()
     plt.show()
-
+    '''
     max_volume_per_station.rename(columns={'VOL': 'Max_VOL'}, inplace=True)  # Correctly renaming the column to 'Max_VOL'
     # Extract rows for each station ID where the volume equals the maximum volume found
     top_stations = pd.merge(output, max_volume_per_station, how='inner', left_on=['STATION_ID', 'VOL'], right_on=['STATION_ID', 'Max_VOL'])
@@ -126,11 +126,11 @@ def plotting_dataset():
     csv_path = r'../data/US_Subset/Top_Stations_Max_Volume_Details.csv'
     top_stations.to_csv(csv_path, index=False)
     print(f"Top stations data saved to '{csv_path}'")
-
+    '''
 def QAQC_Joins():
 
     print('loading data')
-    DATASET_PATH =  r'../data/NPMRDS_TMC_TMAS_US_SUBSET_500_f.pkl'
+    DATASET_PATH =  r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl'
     # Load the data
     #handle input data file differently if .pkl or .csv
     if (DATASET_PATH.endswith('.pkl')):
@@ -196,16 +196,16 @@ def generate_available_stations():
     print(f"Successfully saved unique combinations of 'STATION_ID' and 'STATE_NAME' to {output_filepath}")
 
 def load_pkl():
-    data = pickle.load(open(r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_US_SUBSET_500_2021_v2.pkl', "rb"))
+    data = pickle.load(open(r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_US_SUBSET_1000_22/000T8M_2021.pkl', "rb"))
     breakpoint()
 
 def main():
     #TMAS_to_pkl()
     #QAQC_Joins()
     #plotting_dataset()
-    #run_joins()
+    run_joins()
     #generate_available_stations()
-    load_pkl()
+    #load_pkl()
 
 
 

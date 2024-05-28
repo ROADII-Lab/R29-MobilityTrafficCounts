@@ -1,3 +1,13 @@
+
+import warnings
+import logging
+
+# Suppress all warnings
+warnings.filterwarnings("ignore")
+
+# Suppress specific Streamlit warnings by setting the logging level to ERROR
+logging.getLogger('streamlit').setLevel(logging.ERROR)
+
 # Mobility Counts Prediction
 # 
 import datetime as dt
@@ -10,38 +20,7 @@ import module_census
 import module_data
 import pytz
 import wx
-
-
-# helper functions / hooks for object calls
-def train_model(ai, normalized_df, in_cols, target_col):
-    # setup training data
-    ai.features = in_cols
-    ai.target = target_col
-    x_train, y_train, x_test, y_test = ai.format_training_data(normalized_df)
-
-    # init the model
-    ai.model_init(x_train)
-
-    # train the model
-    ai.train(ai.model, x_train, y_train, x_test, y_test)
-
-    return 
-
-def test_model(ai, normalized_df, in_cols, target_col):
-    # setup training / test data
-    ai.features = in_cols
-    ai.target = target_col
-    # x_train, y_train, x_test, y_test = ai.format_training_data(normalized_df)
-
-    # load the model or use a model that's already loaded
-    if ai.model != None or ai.test_loader == None:
-        predictions, y_test, test_loss, accuracy = ai.test(ai.model, ai.test_loader)
-            
-    else:
-        print("No model or data loaded!")
-        return 0
-    
-    return predictions, y_test, test_loss, accuracy
+import setup_funcs
 
 def find_string_index(alist, search_string):
     alist = list(alist)
@@ -133,7 +112,7 @@ with tab1:
 	
 	if st.button('Train Model'):
 		st.write('Model training started...')
-		result = train_model(ai, normalized_df, in_cols, target_col)
+		result = setup_funcs.train_model(ai, normalized_df, in_cols, target_col)
 		st.write(result)
 	
 	
@@ -146,7 +125,7 @@ with tab2:
 	ai.model_filename = st.selectbox(label = 'Choose a model file', options=list_of_model_files)
 	if st.button('Test Model'):
 		st.write('Model testing started...')
-		test_accuracy = test_model(ai, normalized_df, in_cols, target_col)
+		test_accuracy = setup_funcs.test_model(ai, normalized_df, in_cols, target_col)
 		st.write('Model Accuracy = ', test_accuracy)
 
 

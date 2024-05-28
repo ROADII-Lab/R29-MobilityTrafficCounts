@@ -3,6 +3,7 @@ import datetime
 import os
 import numpy as np
 import pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
 from sklearn.preprocessing import LabelEncoder
 from math import radians, sin, cos, acos
 import pickle
@@ -43,7 +44,7 @@ class data(object):
         
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_500_f.pkl'
+        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl'
         self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/' 
         self.prejoin = r'../data/prejoin.pkl'
 
@@ -132,22 +133,28 @@ class data(object):
         self.features_target = "VOL"
 
     
+
     def split_into_pkl_dir(self, year):
         # Ensure the directory exists
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
-        # Iterate through the unique STATION_ID values
-        for station_id in self.dataset['STATION_ID'].unique():
-            # Filter the dataframe for the current STATION_ID
-            df_station = self.dataset[self.dataset['STATION_ID'] == station_id]
+        # Iterate through the unique combinations of STATION_ID and state values
+        unique_combinations = self.dataset[['STATION_ID', 'state']].drop_duplicates()
+
+        for _, row in unique_combinations.iterrows():
+            station_id = row['STATION_ID']
+            state = row['state']
+            
+            # Filter the DataFrame for the current STATION_ID and state
+            df_station_state = self.dataset[(self.dataset['STATION_ID'] == station_id) & (self.dataset['state'] == state)]
             
             # Define the filename
-            filename = f"{station_id}_{year}.pkl"
+            filename = f"{station_id}_{state}_{year}.pkl"
             filepath = os.path.join(self.output_dir, filename)
             
-            # Save the dataframe as a .pkl file
-            df_station.to_pickle(filepath)
+            # Save the DataFrame as a .pkl file
+            df_station_state.to_pickle(filepath)
 
     def join_and_save(self):
 
@@ -171,7 +178,8 @@ class data(object):
         self.dataset = final_output
 
         print('Outputting into directory of .pkl files')
-        self.split_into_pkl_dir('2021')
+        # Change year of dataset here
+        self.split_into_pkl_dir('2022')
         print(f'directory created at: {self.output_dir}')
 
         return final_output
@@ -323,6 +331,7 @@ class data(object):
         self.prepared_dataset['measurement_tstamp'] = self.prepared_dataset['measurement_tstamp'].interpolate(method='linear')
         self.prepared_dataset['measurement_tstamp'] = pd.to_datetime(self.prepared_dataset['measurement_tstamp']).astype('int64') // 10**9
 
+        # Check for Holiday and add 1 for holiday and 0 for not holiday to is_holiday column
     # Function to normalize active_start_date
     def startdate_norm(self):
         # convert 'active_start_date' from (yyyy-mm-dd hh:mm:ss +- time zone) to integer seconds UTC
@@ -400,8 +409,8 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data location
-            self.TMAS_DATA_FILE = r'../data/TMAS_Class_Clean_2021.csv'
-            self.TMAS_PKL_FILE = r'../data/TMAS_Class_Clean_2021.pkl'
+            self.TMAS_DATA_FILE = r'../data/TMAS_Class_Clean_2022.csv'
+            self.TMAS_PKL_FILE = r'../data/TMAS_Class_Clean_2022.pkl'
             self.df = None
 
         def read(self):
@@ -456,9 +465,9 @@ class data(object):
         def __init__(self) -> None:
             
             # setup default data locations
-            self.NPMRDS_ALL_FILE = r'..\data\US_500/US_500_Fixed_ALL.csv'
-            self.NPMRDS_PASS_FILE = r'..\data\US_500/US_500_Fixed_PASS.csv'
-            self.NPMRDS_TRUCK_FILE = r'..\data\US_500/US_500_Fixed_TRUCK.csv'
+            self.NPMRDS_ALL_FILE = r'..\data\US_1000_22/US_1000_22_ALL.csv'
+            self.NPMRDS_PASS_FILE = r'..\data\US_1000_22/US_1000_22_PASS.csv'
+            self.NPMRDS_TRUCK_FILE = r'..\data\US_1000_22/US_1000_22_TRUCK.csv'
         
         def CombineNPMRDS(self):
             '''Read in NPMRDS Files as input parameters, join them on tmc_code and measurement_tstamp'''
@@ -489,5 +498,5 @@ class data(object):
         def __init__(self) -> None:
 
             # setup default data locations
-            self.TMC_STATION_FILE = r'..\data\US_500/TMC_2021Random_US_Subset_2.csv'
-            self.TMC_ID_FILE = r'..\data\US_500/TMC_Identification.csv'
+            self.TMC_STATION_FILE = r'..\data\US_1000_22/TMC_2022Random_US_Subset_1000_2022.csv'
+            self.TMC_ID_FILE = r'..\data\US_1000_22/TMC_Identification.csv'
