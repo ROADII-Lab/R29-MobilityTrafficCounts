@@ -41,11 +41,13 @@ Figure 1 shows traffic speed data on NHS roadway links. The speed data originate
 
 *Figure 1. NHS Roadway Links with Speed Data*
 
+
 Figure 2 shows the locations of over 8,000 U.S. Federal Highway Administration (FHWA), Travel Monitoring Analysis System (TMAS) stations for traffic counting and classification.
 
 <img src="resources/02_TMASStations.png" width="600">
 
 *Figure 2. TMAS Traffic Counting Stations*
+
 
 Figure 3 shows the locations of NHS roadway links having TMAS traffic counting stations.
 
@@ -53,11 +55,13 @@ Figure 3 shows the locations of NHS roadway links having TMAS traffic counting s
 
 *Figure 3. NHS Roadway Links with TMAS Traffic Counting Stations*
 
+
 Figure 4 shows U.S. Census 2020 Population Density by County as an example of the Census data used in the code base. The code base uses NHS roadway links where traffic counts and speed data are available, along with Census data; to perform prediction for NHS roadway links having similar Census data characteristics where traffic counts and/or speed data are not available.
 
 <img src="resources/04_USCensus2020PopDensityExample.png" width="600">
 
 *Figure 4. U.S. Census 2020 Population Density by County (Retrieved from https://maps.geo.census.gov/ddmv/map.html)*
+
 
 - **Purpose of the source code and how it relates to the overall goals of the project:** This code base will make it easier and more approachable for transportation agencies to develop a simple neural network model to output historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
 - **Length of the project:** The code base is currently in development. The ROADII team will update this repository as stable builds of the code are created. Development and testing will likely continue through spring 2024. 
@@ -107,6 +111,8 @@ The steps to run the model training algorithm are as follows:
 11) After selecting the desired input columns for training, use the “choose a target column” drop-down menu to select the data field to predict, the results of which will be saved in a trained AI model
 12) After a model has been trained successfully and saved in “models”; click “use model”
 
+### Streamlit GUI Visuals
+
 The following figures show in-development screenshots from the Streamlit GUI. The Streamlit GUI provides a main banner at the top, along with four (4) tabs that may be toggled by the user which are:
 
 - "Train Model": User loads source data and trains an AI model on this tab
@@ -120,11 +126,13 @@ Figure 5 shows the Streamlit GUI’s main banner at the top, and the user’s ab
 
 *Figure 5. Streamlit GUI – User Chooses Source Data File*
 
-After the user chooses a source data file, the source code ingests the source data and displays an abridged sample of the source data in the “Train Model” tab. Figure 5 shows the user’s ability to view an abridged sample of the source data. In addition, the code base normalizes non-numerical data columns and the Streamlit GUI displays this “normalized” data in a separate pane in the same format as Figure 6, this “normalized” data pane is not shown in the figure.
+
+After the user chooses a source data file, the source code ingests the source data and displays an abridged sample of the source data in the “Train Model” tab. Figure 6 shows the user’s ability to view an abridged sample of the source data. In addition, the code base normalizes non-numerical data columns and the Streamlit GUI displays this “normalized” data in a separate pane in the same format as Figure 6, this “normalized” data pane is not shown in the figure.
 
 <img src="resources/06_StreamlitUserViewsInputData.png" width="600">
 
 *Figure 6. Streamlit GUI – User Views Input Data*
+
 
 Figure 7 shows the user’s ability to choose input data columns and the target data column in AI model training – in the “Train Model” tab. The input data columns should not include the target column. After the user chooses input data columns and the target data column and clicks “Train Model” – then AI model training is initiated and the user will start to see in-progress results in their command prompt application. After AI model training is complete, the code base saves an AI model file to the sub-directory “..\models.”
 
@@ -132,29 +140,41 @@ Figure 7 shows the user’s ability to choose input data columns and the target 
 
 *Figure 7. Streamlit GUI – User Selects Input Data for AI Model Training on a Targeted Metric*
 
+
 In addition, the user may test a previously generated AI models without training an AI model – in the “Test Model” tab. In Figure 8, the user may click on the “Choose a model file” drop-down menu and select a model file (in .pt format) from “..\models.” Once a model file is selected, the user may click the “Test Model” button to begin testing.
 
 <img src="resources/08_StreamlitUserTestAIModel.png" width="600">
 
 *Figure 8. Streamlit GUI – User Tests Previously Generated AI Models*
 
-In the “Train Model” tab, if the user chooses to train a new AI model, Figure 9 shows the AI model training progress with a real-time updating graph on the Streamlit GUI. The x-axis is the number of AI training epochs; the user may set the number of training epochs in the source code, and the AI model training process ends once the number of epochs is reached. The y-axis is the logarithmic loss of the AI model training.
 
-<img src="resources/09_StreamlitTrainAIModelProgress.png" width="450">
+In the “Train Model” tab, if the user chooses to train a new AI model, Figure 9 shows the AI model training progress with losses updating with each epoch on the Streamlit GUI. The x-axis is the number of AI training epochs; the user may set the number of training epochs in the source code, and the AI model training process ends once the number of epochs is reached. The y-axis is the logarithmic loss of the AI model training.
 
-*Figure 9. Streamlit GUI – Example of AI Model Training Progress*
+<img src="resources/09_StreamlitTrainAIModel_loss.png" width="450">
 
-In addition to Figure 9 being shown on the Streamlit GUI, Figure 10 shows the AI model training process with a periodically updating graph in the command prompt application. In Figure 9, the x-axis is the percent difference (absolute value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value), and the y-axis is the number of occurrences in a percent difference histogram bin. The bin size in Figure 9 is two (2) percent.
+*Figure 9. Streamlit GUI – AI Model Training Losses vs. Epoch*
 
-<img src="resources/09_StreamlitTrainAIModelProgress.png" width="600">
+
+In addition to Figure 9 being shown on the Streamlit GUI, Figure 10 shows the AI model training process with a periodically updating graph in the command prompt application. In Figure 10, the x-axis is the percent difference (absolute value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value), and the y-axis is the number of occurrences in a percent difference histogram bin. The bin size in Figure 9 is two (2) percent.
+
+<img src="resources/10_StreamlitTrainAIModel_pctdiff.png" width="600">
 
 *Figure 10. AI Model Training – Histogram of Percent Difference (Absolute Value) between AI Model Training (i.e., Predicted Value) and Input Data (i.e., Expected Value)*
 
-Figure 11 is another periodically updating graph in the command prompt application. The x-axis is the expected value while the y-axis is the predicted value.
 
-<img src="resources/11_StreamlitTrainAIModelProgress.png" width="600">
+Figure 11 compares the predicted data versus input data and visually depicts the statistical correlation or R^2 value. The closer the scatterplot looks to a line with slope of 1, the closer the R^2 value is to 1. The x-axis is the expected value while the y-axis is the predicted value.
+
+<img src="resources/11_StreamlitTrainAIModel_accuracy.png" width="600">
 
 *Figure 11. AI Model Training – AI Model Training (i.e., Predicted Value) versus Input Data (i.e., Expected Value)*
+
+
+Figure 12 shows real-time updating relative importance of the input training features (i.e., columns of the input dataframe).
+
+<img src="resources/12_StreamlitTrainAIModel_importance.png" width="600">
+
+*Figure 12. AI Model Training – Relative Importance of Input Training Features*
+
 
 After the AI model training completes, the following outputs are seen on the command prompt application. The logarithmic loss, tensor, test loss, and R-squared values provide a high-level summary of the AI model training. The AI model is saved to “..\models.”
 
@@ -197,6 +217,27 @@ Model file saved to ../models/model__20240329_194737
 *{to add: explanation of AI training outputs}*
 
 *{to add: outputs and screenshots of “Test Model tab”}*
+
+The user may proceed to the "Results" tab after training or testing an AI model. Figure 13 shows the display of input data on a Folium map in the Streamlit GUI. Figure 14, Figure 15, and Figure 16 are example close-up views of an urban, suburban, and rural road segment, respectively.
+
+<img src="resources/13_StreamlitResults_inputdata.png" width="600">
+
+*Figure 13. Results Tab - Display of Input Data*
+
+<img src="resources/14_StreamlitResults_inputdata_urban.png" width="600">
+
+*Figure 14. Results Tab - Display of Input Data (Urban Road Segment)*
+
+<img src="resources/15_StreamlitResults_inputdata_suburban.png" width="600">
+
+*Figure 15. Results Tab - Display of Input Data (Subrban Road Segment)*
+
+<img src="resources/16_StreamlitResults_inputdata_rural.png" width="600">
+
+*Figure 16. Results Tab - Display of Input Data (Rural Road Segment)*
+
+*{to add: display of predicted data}*
+*Figure 17. Results Tab - Display of Predicted Data*
 
 
 # 4. Additional Notes
