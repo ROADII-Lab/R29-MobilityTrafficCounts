@@ -236,7 +236,7 @@ After the user has chosen a date and time range, Figure 14 shows the display of 
 
 <img src="resources/16_StreamlitResults_inputdata_suburban.png" width="600">
 
-*Figure 16. Results Tab - Display of Input Data (Subrban Road Segment)*
+*Figure 16. Results Tab - Display of Input Data (Suburban Road Segment)*
 
 <img src="resources/17_StreamlitResults_inputdata_rural.png" width="600">
 
