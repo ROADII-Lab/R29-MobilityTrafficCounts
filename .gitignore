@@ -5,3 +5,6 @@
 *.pt
 ml/join_data.py
 ml/test_model.py
+ml/map_in.html
+ml/map_pr.html
+ml/featureimportance.csv

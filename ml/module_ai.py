@@ -10,7 +10,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset, BatchSampler, RandomSampler
 import pandas as pd
 import altair as alt
-import copy
 import streamlit as st
 from datetime import datetime
 from sklearn.model_selection import train_test_split
@@ -43,16 +42,16 @@ class ai:
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
     training_learning_rate = 0.05                               # default network learning rate
-    test_interval = 50                                          # model testing interval during training
+    test_interval = 2                                          # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
-        
         # setup GPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if(self.device == "cuda"):
+        if self.device == "cuda":
             torch.cuda.init()
             print("Using ", self.device)
+        self.feature_importance_df = pd.DataFrame(columns=['epoch'] + self.features)  # Initialize DataFrame for feature importance
 
     def get_model_list(self, path, extension='pt'): # def get_model_list(self, path, extension='pkl'):
         # returns a list of models in the specified path
@@ -204,39 +203,34 @@ class ai:
         plt.close()
 
     def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate):
-        # Check if multiple GPUs are available and wrap the model using DataParallel
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             torch.cuda.synchronize()
             model = nn.DataParallel(model)
 
-        # Send model to device (will be GPU if CUDA is available)
         model.to(self.device)
 
-        # Convert training and testing data into PyTorch datasets and dataloaders
         train_dataset = TensorDataset(x_train, y_train)
         self.train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
         test_dataset = TensorDataset(x_test, y_test)
         self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
-        # Define the loss function and optimizer
         criterion = nn.HuberLoss(delta=500)
         optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=self.weight_decay)
 
-        # Place chart plotting epochs in a streamlit window
-        col3, col4 = st.columns([1,1])
+        col3, col4 = st.columns([1, 1])
         with col4:
             pass
         with col3:
-            # Initialize Plotting of Epoch and Loss
-            data = pd.DataFrame({'Epoch': [], 'Loss':[]})
+            data = pd.DataFrame({'Epoch': [], 'Loss': []})
             chart = alt.Chart(data).mark_line(color='red').encode(
                 x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')),
                 y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
             ).properties(title='Logarithmic Loss vs Epochs')
             alt_chart = st.altair_chart(chart, use_container_width=False)
-            
-            # Training loop
+
+            feature_importance_chart = st.empty()  # Initialize an empty container for the feature importance chart
+
             for epoch in range(epochs):
                 epoch_start = time.time()  # Start time of the epoch
                 model.train()
@@ -267,27 +261,121 @@ class ai:
                 print(f'Epoch [{epoch+1}/{epochs}], Loss: {average_loss:.4f}, Time: {epoch_duration:.2f} sec')
 
                 if (epoch+1) % self.test_interval == 0:
-                    predictions, y_test, test_loss, test_accuracy  = self.test(model, self.test_loader)
-                    self.plot_convergence(predictions, y_test)
-                
-                    print(f'  Test Loss: {test_loss}; Test Accuracy: {test_accuracy}')
+                    # Predictions and test metrics
+                    model.eval()
+                    total_test_loss = 0
+                    all_predictions = []
+                    all_y_test = []
 
-                    # if the loss is less, copy the weights, if we have hit the target loss, save the model and end training
-                    if epoch+1 == self.test_interval:
-                        self.model_top_loss = test_loss
-                        self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
+                    with torch.no_grad():
+                        for x_batch, y_batch in self.test_loader:
+                            x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
+                            predictions = model(x_batch)
+                            test_loss = criterion(predictions, y_batch)
+                            total_test_loss += test_loss.item()
+
+                            all_predictions.append(predictions)
+                            all_y_test.append(y_batch)
+
+                    # Concatenate all batches for calculating accuracy and other metrics
+                    all_predictions = torch.cat(all_predictions, dim=0)
+                    all_y_test = torch.cat(all_y_test, dim=0)
+                    test_loss = total_test_loss / len(self.test_loader)
+                    # plot data within x %
+                    R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
+                    print(f'Test Loss: {test_loss:.4f}; R2: {R2:.4f}; {Within10:.2f}% are within {100*self.pdiffGoal}% of expected')
+                    # plot convergence
+                    self.plot_convergence(all_predictions, all_y_test)
+                    print(f'  Test Loss: {test_loss}; Test Accuracy: {R2}')
+
                     if test_loss < self.model_top_loss:
                         self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                         self.model_top_loss = test_loss
+                        self.model_save(self.model_top)
                         if test_loss <= self.target_loss:
                             print("Early stopping!")
-                            self.model_save(self.model_top)
                             return
+
+                    # Calculate feature importance
+                    feature_importance = self.calculate_feature_importance(model, x_test, y_test)
+                    feature_importance['epoch'] = epoch + 1
+                    self.feature_importance_df = pd.concat([self.feature_importance_df, feature_importance], ignore_index=True)
+
+                    # Save feature importance to CSV
+                    self.feature_importance_df.to_csv("featureimportance.csv", index=False)
+
+                    # Exclude columns with 'before' or 'after' in their names
+                    filtered_df = self.feature_importance_df.loc[:, ~self.feature_importance_df.columns.str.contains('before|after')]
+
+                    # Identify the largest epoch
+                    largest_epoch = filtered_df['epoch'].max()
+
+                    # Filter the dataframe for the largest epoch
+                    largest_epoch_df = filtered_df[filtered_df['epoch'] == largest_epoch]
+
+                    # Drop the 'epoch' column as it's not needed for feature importance
+                    largest_epoch_df = largest_epoch_df.drop(columns=['epoch'])
+
+                    # Transpose the dataframe to get features as rows
+                    transposed_df = largest_epoch_df.T
+                    transposed_df.columns = ['importance']
+                    transposed_df['importance'] = pd.to_numeric(transposed_df['importance'])
+
+                    # Sort by importance and get the top 10 features
+                    top_10_features = transposed_df.nlargest(10, 'importance')
+
+                    # Plotting feature importance
+                    #self.plot_feature_importance_terminal(top_10_features)
+                    self.plot_feature_importance_streamlit(top_10_features, feature_importance_chart)
 
             # Final model saving after training
             self.model_save(self.model_top)
             self.model = self.model_top
 
+
+    def plot_feature_importance_terminal(self, top_10_features):
+        # Plotting with Matplotlib for terminal
+        plt.figure(figsize=(12, 8))
+        bars = plt.barh(top_10_features.index, top_10_features['importance'], color='skyblue')
+        plt.xscale('log')
+        plt.xlabel('Average Mean Square Error')
+        plt.title('Top 10: Feature Importance')
+        plt.gca().invert_yaxis()  # Invert y-axis to have the greatest feature on top
+
+        # Adding labels
+        for bar in bars:
+            plt.text(bar.get_width(), bar.get_y() + bar.get_height()/2, f'{bar.get_width():.2e}', va='center', ha='left')
+
+        plt.show()
+
+
+    def plot_feature_importance_streamlit(self, top_10_features, feature_importance_chart):
+        # Plotting with Altair for Streamlit
+        top_10_features_reset = top_10_features.reset_index()
+        bar_chart = alt.Chart(top_10_features_reset).mark_bar().encode(
+            y=alt.Y('index:N', sort='-x', title='Feature'),
+            x=alt.X('importance:Q', scale=alt.Scale(type='log'), title='Average Mean Square Error'),
+            tooltip=['index', 'importance']
+        ).properties(
+            title='Top 10: Feature Importance'
+        )
+
+        text = bar_chart.mark_text(
+            align='left',
+            baseline='middle',
+            dx=3  # Nudges text to right so it doesn't appear on top of the bar
+        ).encode(
+            text=alt.Text('importance:Q', format='.2e')
+        )
+
+        combined_chart = (bar_chart + text).configure_axis(
+            labelFontSize=12,
+            titleFontSize=14
+        ).configure_title(
+            fontSize=16
+        )
+
+        feature_importance_chart.altair_chart(combined_chart, use_container_width=True)
 
     def test(self, model, test_loader):
         criterion = nn.MSELoss()
@@ -317,6 +405,21 @@ class ai:
         print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
         
         return all_predictions, all_y_test, average_test_loss, (R2, Within10)
+
+    def calculate_feature_importance(self, model, x_test, y_test):
+        model.eval()
+        baseline_predictions = model(x_test.to(self.device)).cpu().detach().numpy()
+        baseline_mse = np.mean((y_test.numpy() - baseline_predictions) ** 2)
+        feature_importance = {}
+
+        for i, feature in enumerate(self.features):
+            x_test_permuted = x_test.clone()
+            x_test_permuted[:, i] = x_test_permuted[:, i][torch.randperm(x_test_permuted.size()[0])]
+            permuted_predictions = model(x_test_permuted.to(self.device)).cpu().detach().numpy()
+            permuted_mse = np.mean((y_test.numpy() - permuted_predictions) ** 2)
+            feature_importance[feature] = permuted_mse - baseline_mse
+
+        return pd.DataFrame([feature_importance])
 
     def predict(self, model, data):
         scaler = StandardScaler()
