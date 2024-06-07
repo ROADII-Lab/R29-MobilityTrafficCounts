@@ -28,21 +28,21 @@ class ai:
     training_split = 0.25                                       # controls the amount of data to use for train/test
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
-    model_top_loss = 100                                        # placeholding for the current top model's test loss
+    model_top_loss = 0                                          # placeholding for the current top model's test loss
     model_filename_root = "../models/model_"                    # default model filename
     model_filename = None                                       # placeholder for model filename
     model_size = 1000                                           # number of parameters for the hidden network layer
     train_loader = None                                         # placeholder for the training dataloader
     test_loader = None                                          # placeholder for the test dataloader
     training_epochs = 500                                       # default number of epochs to train the network for
-    training_batch_size = 85000                                 # number of records we *think* we can fit into the GPU...
-    training_workers = 8                                        # number of dataloader workers to use for loading training data into the GPU
+    training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
+    test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...
+    training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
     testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
-    target_loss = 100                                           # keep training until either the epoch limit is hit or test loss is lower than this number
     training_learning_rate = 0.05                               # default network learning rate
-    test_interval = 2                                          # model testing interval during training
+    test_interval = 10                                          # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
@@ -163,7 +163,7 @@ class ai:
     def model_save(self, model):
         # triggers the model save process
         model.save(self.model_filename_root)
-        self.model_filename = self.model_filename_root + ".pkl"
+        self.model_filename = self.model_filename_root + ".pt"
 
     def calculate_accuracy(self, predicted, known):
         # move data back to main memory for CPU processing
@@ -202,7 +202,7 @@ class ai:
         plt.show()
         plt.close()
 
-    def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate):
+    def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate, accumulation_steps=4):
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             torch.cuda.synchronize()
@@ -211,7 +211,7 @@ class ai:
         model.to(self.device)
 
         train_dataset = TensorDataset(x_train, y_train)
-        self.train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size, shuffle=True, num_workers=self.training_workers, pin_memory=True)
+        self.train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size // accumulation_steps, shuffle=True, num_workers=self.training_workers, pin_memory=True)
         test_dataset = TensorDataset(x_test, y_test)
         self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
@@ -235,15 +235,20 @@ class ai:
                 epoch_start = time.time()  # Start time of the epoch
                 model.train()
                 total_loss = 0
-                for x_batch, y_batch in self.train_loader:
+                optimizer.zero_grad()
+
+                for i, (x_batch, y_batch) in enumerate(self.train_loader):
                     x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
                     # Forward pass
                     outputs = model(x_batch)
                     loss = criterion(outputs, y_batch)
                     # Backward pass and optimization
-                    optimizer.zero_grad()
                     loss.backward()
-                    optimizer.step()
+
+                    if (i + 1) % accumulation_steps == 0:
+                        optimizer.step()
+                        optimizer.zero_grad()
+
                     total_loss += loss.item()
 
                 average_loss = total_loss / len(self.train_loader)
@@ -251,7 +256,7 @@ class ai:
 
                 # Update and display the chart
                 new_data = pd.DataFrame({'Epoch': [epoch], 'Loss': [average_loss]})
-                data = pd.concat([data, new_data], ignore_index=True) 
+                data = pd.concat([data, new_data], ignore_index=True)
                 chart = alt.Chart(data).mark_line(color='red').encode(
                     x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')), 
                     y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
@@ -263,24 +268,12 @@ class ai:
                 if (epoch+1) % self.test_interval == 0:
                     # Predictions and test metrics
                     model.eval()
-                    total_test_loss = 0
+                    # total_test_loss = 0
                     all_predictions = []
                     all_y_test = []
 
-                    with torch.no_grad():
-                        for x_batch, y_batch in self.test_loader:
-                            x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
-                            predictions = model(x_batch)
-                            test_loss = criterion(predictions, y_batch)
-                            total_test_loss += test_loss.item()
+                    all_predictions, all_y_test, test_loss, R2_within10 = self.test(model, self.test_loader)
 
-                            all_predictions.append(predictions)
-                            all_y_test.append(y_batch)
-
-                    # Concatenate all batches for calculating accuracy and other metrics
-                    all_predictions = torch.cat(all_predictions, dim=0)
-                    all_y_test = torch.cat(all_y_test, dim=0)
-                    test_loss = total_test_loss / len(self.test_loader)
                     # plot data within x %
                     R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
                     print(f'Test Loss: {test_loss:.4f}; R2: {R2:.4f}; {Within10:.2f}% are within {100*self.pdiffGoal}% of expected')
@@ -288,13 +281,14 @@ class ai:
                     self.plot_convergence(all_predictions, all_y_test)
                     print(f'  Test Loss: {test_loss}; Test Accuracy: {R2}')
 
+                    # Make sure we copy the model if none exists
+                    if(self.model_top == None):
+                        self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
+
                     if test_loss < self.model_top_loss:
                         self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                         self.model_top_loss = test_loss
                         self.model_save(self.model_top)
-                        if test_loss <= self.target_loss:
-                            print("Early stopping!")
-                            return
 
                     # Calculate feature importance
                     feature_importance = self.calculate_feature_importance(model, x_test, y_test)
@@ -332,6 +326,38 @@ class ai:
             self.model_save(self.model_top)
             self.model = self.model_top
 
+    def test(self, model, test_loader):
+        criterion = nn.MSELoss()
+        model.eval()
+
+        total_loss = 0
+        all_predictions = []
+        all_y_test = []
+
+        with torch.no_grad():
+            for x_batch, y_batch in test_loader:
+                x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
+                predictions = model(x_batch)
+                test_loss = criterion(predictions, y_batch)
+                total_loss += test_loss.item()
+
+                all_predictions.append(predictions)
+                all_y_test.append(y_batch)
+
+        # Concatenate all batches for calculating accuracy and other metrics
+        all_predictions = torch.cat(all_predictions, dim=0)
+        all_y_test = torch.cat(all_y_test, dim=0)
+
+        R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
+        average_test_loss = total_loss / len(test_loader)
+
+        print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
+        
+        # Release GPU memory
+        del x_batch, y_batch, predictions, test_loss
+        torch.cuda.empty_cache()
+
+        return all_predictions, all_y_test, average_test_loss, (R2, Within10)
 
     def plot_feature_importance_terminal(self, top_10_features):
         # Plotting with Matplotlib for terminal
@@ -377,49 +403,29 @@ class ai:
 
         feature_importance_chart.altair_chart(combined_chart, use_container_width=True)
 
-    def test(self, model, test_loader):
-        criterion = nn.MSELoss()
-        model.eval()
-
-        total_loss = 0
-        all_predictions = []
-        all_y_test = []
-
-        with torch.no_grad():
-            for x_batch, y_batch in test_loader:
-                x_batch, y_batch = x_batch.to(self.device, non_blocking=True), y_batch.to(self.device, non_blocking=True)
-                predictions = model(x_batch)
-                test_loss = criterion(predictions, y_batch)
-                total_loss += test_loss.item()
-
-                all_predictions.append(predictions)
-                all_y_test.append(y_batch)
-
-        # Concatenate all batches for calculating accuracy and other metrics
-        all_predictions = torch.cat(all_predictions, dim=0)
-        all_y_test = torch.cat(all_y_test, dim=0)
-
-        R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
-        average_test_loss = total_loss / len(test_loader)
-
-        print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
-        
-        return all_predictions, all_y_test, average_test_loss, (R2, Within10)
-
     def calculate_feature_importance(self, model, x_test, y_test):
         model.eval()
-        baseline_predictions = model(x_test.to(self.device)).cpu().detach().numpy()
+        baseline_predictions = self._predict_in_batches(model, x_test)
         baseline_mse = np.mean((y_test.numpy() - baseline_predictions) ** 2)
         feature_importance = {}
 
         for i, feature in enumerate(self.features):
             x_test_permuted = x_test.clone()
             x_test_permuted[:, i] = x_test_permuted[:, i][torch.randperm(x_test_permuted.size()[0])]
-            permuted_predictions = model(x_test_permuted.to(self.device)).cpu().detach().numpy()
+            permuted_predictions = self._predict_in_batches(model, x_test_permuted)
             permuted_mse = np.mean((y_test.numpy() - permuted_predictions) ** 2)
             feature_importance[feature] = permuted_mse - baseline_mse
 
         return pd.DataFrame([feature_importance])
+
+    def _predict_in_batches(self, model, x_test):
+        predictions = []
+        for i in range(0, x_test.size(0), self.test_batch_size):
+            x_batch = x_test[i:i+self.test_batch_size].to(self.device)
+            with torch.no_grad():
+                batch_predictions = model(x_batch).cpu().numpy()
+            predictions.append(batch_predictions)
+        return np.concatenate(predictions)
 
     def predict(self, model, data):
         scaler = StandardScaler()
