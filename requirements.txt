@@ -1,6 +1,5 @@
 accelerate
 altair
-base64
 beautifulsoup4
 dask
 dask_expr
