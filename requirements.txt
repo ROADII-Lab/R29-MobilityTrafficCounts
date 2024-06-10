@@ -1,5 +1,6 @@
 accelerate
 altair
+base64
 beautifulsoup4
 dask
 dask_expr
@@ -19,7 +20,6 @@ sentencepiece
 shapely
 statistics
 streamlit
-streamlit-date-picker
 streamlit-folium
 torch
 wxPython
