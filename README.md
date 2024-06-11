@@ -230,15 +230,15 @@ After the user has chosen a date and time range, Figure 14 shows the display of 
 
 *Figure 14. Results Tab - Display of Input Data*
 
-<img src="resources/15_StreamlitResults_inputdata_urban.png" width="600">
+<img src="resources/15_StreamlitResults_inputdata_urban.png" width="450">
 
 *Figure 15. Results Tab - Display of Input Data (Urban Road Segment)*
 
-<img src="resources/16_StreamlitResults_inputdata_suburban.png" width="600">
+<img src="resources/16_StreamlitResults_inputdata_suburban.png" width="450">
 
 *Figure 16. Results Tab - Display of Input Data (Suburban Road Segment)*
 
-<img src="resources/17_StreamlitResults_inputdata_rural.png" width="600">
+<img src="resources/17_StreamlitResults_inputdata_rural.png" width="450">
 
 *Figure 17. Results Tab - Display of Input Data (Rural Road Segment)*
 
