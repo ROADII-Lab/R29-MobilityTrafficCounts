@@ -30,18 +30,18 @@ class ai:
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 0                                          # placeholding for the current top model's test loss
     model_filename_root = "../models/model_"                    # default model filename
-    model_size = 1000                                           # number of parameters for the hidden network layer
+    model_size = 500                                            # number of parameters for the hidden network layer
     train_loader = None                                         # placeholder for the training dataloader
     test_loader = None                                          # placeholder for the test dataloader
-    training_epochs = 10                                      # default number of epochs to train the network for
+    training_epochs = 1500                                      # default number of epochs to train the network for
     training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
     test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...should be the same as above unless running into GPU memory issues
     training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
     testing_workers = 8                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
-    dropout = 0.15                                              # % of neurons to apply dropout to                                        
-    training_learning_rate = 0.05                               # default network learning rate
-    test_interval = 10                                         # model testing interval during training
+    dropout = 0.25                                              # % of neurons to apply dropout to                                        
+    training_learning_rate = 0.02                               # default network learning rate
+    test_interval = 100                                         # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
