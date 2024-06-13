@@ -25,24 +25,23 @@ class ai:
     # settings / object properties
     features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
     target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
-    training_split = 0.25                                       # controls the amount of data to use for train/test
+    training_split = 0.10                                       # controls the amount of data to use for train/test
     model = None                                                # placeholder for the model once it has been initialized
     model_top = None                                            # placeholder for the top scoring model
     model_top_loss = 0                                          # placeholding for the current top model's test loss
     model_filename_root = "../models/model_"                    # default model filename
-    model_filename = None                                       # placeholder for model filename
     model_size = 1000                                           # number of parameters for the hidden network layer
     train_loader = None                                         # placeholder for the training dataloader
     test_loader = None                                          # placeholder for the test dataloader
-    training_epochs = 500                                       # default number of epochs to train the network for
+    training_epochs = 10                                      # default number of epochs to train the network for
     training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
-    test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...
+    test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...should be the same as above unless running into GPU memory issues
     training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
-    testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
+    testing_workers = 8                                         # numer of dataloader workers to use for loading test data into the GPU
     weight_decay = 0.001                                        # optimizer weight decay        
     dropout = 0.15                                              # % of neurons to apply dropout to                                        
     training_learning_rate = 0.05                               # default network learning rate
-    test_interval = 10                                          # model testing interval during training
+    test_interval = 10                                         # model testing interval during training
     pdiffGoal = 0.15                        
 
     def __init__(self) -> None:
@@ -146,24 +145,24 @@ class ai:
     def model_init(self, x_dim):
         # Initialize the neural network
         input_size = x_dim.shape[1]
-        self.model = LinearNN(input_size, self.model_size, self.dropout)
+        self.model = LinearNN(input_size, self.model_size, self.dropout, self.model_filename_root)
         self.model.to(self.device)
         return 
     
-    def model_load(self, x_dim, filename=model_filename):
+    def model_load(self, x_dim, filename):
         # loads the model using specified filename
-        self.model_init(x_dim)
-        print("Loading model:", self.model_filename)
-        if self.model.load_model_for_inference(self.model_filename):
+        self.model_init(x_dim, self.model_filename_root)
+        self.model.filename = filename
+        print("Loading model:", self.model.filename)
+        if self.model.load_model_for_inference():
             self.model.to(self.device)
             return True
         else:
             return False
     
-    def model_save(self, model):
+    def model_save(self, specific_model):
         # triggers the model save process
-        model.save(self.model_filename_root)
-        self.model_filename = self.model_filename_root + ".pt"
+        specific_model.save()
 
     def calculate_accuracy(self, predicted, known):
         # move data back to main memory for CPU processing
@@ -272,11 +271,11 @@ class ai:
                     all_predictions = []
                     all_y_test = []
 
-                    all_predictions, all_y_test, test_loss, R2_within10 = self.test(model, self.test_loader)
+                    all_predictions, all_y_test, test_loss, R2, Within10 = self.test(model, self.test_loader)
 
                     # plot data within x %
-                    R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
                     print(f'Test Loss: {test_loss:.4f}; R2: {R2:.4f}; {Within10:.2f}% are within {100*self.pdiffGoal}% of expected')
+                    
                     # plot convergence
                     self.plot_convergence(all_predictions, all_y_test)
                     print(f'  Test Loss: {test_loss}; Test Accuracy: {R2}')
@@ -288,7 +287,7 @@ class ai:
                     if test_loss < self.model_top_loss:
                         self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                         self.model_top_loss = test_loss
-                        self.model_save(self.model_top)
+                        self.model_top.save()
 
                     # Calculate feature importance
                     feature_importance = self.calculate_feature_importance(model, x_test, y_test)
@@ -296,7 +295,7 @@ class ai:
                     self.feature_importance_df = pd.concat([self.feature_importance_df, feature_importance], ignore_index=True)
 
                     # Save feature importance to CSV
-                    self.feature_importance_df.to_csv("featureimportance.csv", index=False)
+                    self.feature_importance_df.to_csv(self.model.filename_root + "_featureimportance.csv", index=False)
 
                     # Exclude columns with 'before' or 'after' in their names
                     filtered_df = self.feature_importance_df.loc[:, ~self.feature_importance_df.columns.str.contains('before|after')]
@@ -323,8 +322,9 @@ class ai:
                     self.plot_feature_importance_streamlit(top_10_features, feature_importance_chart)
 
             # Final model saving after training
-            self.model_save(self.model_top)
-            self.model = self.model_top
+            if(self.model_top != None):
+                self.model = self.model_top
+            self.model.save()
 
     def test(self, model, test_loader):
         criterion = nn.MSELoss()
@@ -351,13 +351,13 @@ class ai:
         R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
         average_test_loss = total_loss / len(test_loader)
 
-        print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
+        # print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
         
         # Release GPU memory
         del x_batch, y_batch, predictions, test_loss
         torch.cuda.empty_cache()
 
-        return all_predictions, all_y_test, average_test_loss, (R2, Within10)
+        return all_predictions, all_y_test, average_test_loss, R2, Within10
 
     def plot_feature_importance_terminal(self, top_10_features):
         # Plotting with Matplotlib for terminal
@@ -437,7 +437,11 @@ class ai:
 
 # *Somewhat* simple neural network!
 class LinearNN(nn.Module):
-    def __init__(self, input_size, layer_size, dropout):
+    # object parameters
+    filename = None
+    filename_root = None
+
+    def __init__(self, input_size, layer_size, dropout, filename_root):
         super(LinearNN, self).__init__()
         self.fc1 = nn.Linear(input_size, int(layer_size*2))
         self.bn1 = nn.BatchNorm1d(int(layer_size*2))
@@ -451,6 +455,9 @@ class LinearNN(nn.Module):
 
         # Optional: add dropout for regularization
         self.dropout = nn.Dropout(dropout)
+
+        # setup filename
+        self.filename = self.create_filename(filename_root)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
@@ -466,17 +473,16 @@ class LinearNN(nn.Module):
         return x
     
     # Function to save the model
-    def save(self, filename):
-        filename = self.create_filename(filename)
+    def save(self):
 
         # save the entire model for stand-alone inference later
         model_jit = torch.jit.script(self)
-        model_jit.save(filename + ".pt")
-        print(f"Model file saved to {filename}")
+        model_jit.save(self.filename)
+        print(f"Model file saved to {self.filename}")
 
         return True
         
-    def load_model_for_inference(self, filename):
+    def load_model_for_inference(self, filename=filename):
         try:
             # Load the entire JIT-compiled model
             self.model = torch.jit.load(filename, map_location=torch.device('cpu'))
@@ -489,6 +495,7 @@ class LinearNN(nn.Module):
             print(e)
             return False
     
-    def create_filename(self, filename):
+    def create_filename(self, filename_root):
         current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{filename}_{current_datetime}"
+        self.filename_root = f"{filename_root}_{current_datetime}"
+        return self.filename_root + ".pt"

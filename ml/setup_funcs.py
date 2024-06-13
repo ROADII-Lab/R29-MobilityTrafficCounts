@@ -5,7 +5,6 @@ import pandas as pd
 # Import custom modules
 import module_ai
 import module_data
-import module_census
 
 # helper functions / hooks for object calls
 def train_model(ai, normalized_df, in_cols, target_col):
@@ -29,14 +28,14 @@ def test_model(ai, normalized_df, in_cols, target_col):
     # x_train, y_train, x_test, y_test = ai.format_training_data(normalized_df)
 
     # load the model or use a model that's already loaded
-    if ai.model != None or ai.test_loader == None:
-        predictions, y_test, test_loss, accuracy = ai.test(ai.model, ai.test_loader)
+    if ai.model != None or ai.test_loader != None:
+        predictions, y_test, test_loss, R2, Within15 = ai.test(ai.model, ai.test_loader)
             
     else:
         print("No model or data loaded!")
         return 0
     
-    return predictions, y_test, test_loss, accuracy
+    return predictions, y_test, test_loss, (R2, Within15)
 
 def setup():
     # init ai module
