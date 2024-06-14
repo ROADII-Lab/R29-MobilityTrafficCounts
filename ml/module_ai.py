@@ -1,5 +1,6 @@
 import copy
 import os
+import json
 import time
 import pandas as pd
 import numpy as np
@@ -20,37 +21,66 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('module://drawilleplot')
 
-class ai:
-
-    # settings / object properties
-    features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
-    target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
-    training_split = 0.10                                       # controls the amount of data to use for train/test
-    model = None                                                # placeholder for the model once it has been initialized
-    model_top = None                                            # placeholder for the top scoring model
-    model_top_loss = 0                                          # placeholding for the current top model's test loss
-    model_filename_root = "../models/model_"                    # default model filename
-    model_size = 500                                            # number of parameters for the hidden network layer
-    train_loader = None                                         # placeholder for the training dataloader
-    test_loader = None                                          # placeholder for the test dataloader
-    training_epochs = 1500                                      # default number of epochs to train the network for
-    training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
-    test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...should be the same as above unless running into GPU memory issues
-    training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
-    testing_workers = 8                                         # numer of dataloader workers to use for loading test data into the GPU
-    weight_decay = 0.001                                        # optimizer weight decay        
-    dropout = 0.25                                              # % of neurons to apply dropout to                                        
-    training_learning_rate = 0.02                               # default network learning rate
-    test_interval = 100                                         # model testing interval during training
-    pdiffGoal = 0.15                        
+class ai:                   
 
     def __init__(self) -> None:
+        
+        # settings / object properties
+        self.features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
+        self.target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
+        self.training_split = 0.10                                       # controls the amount of data to use for train/test
+        self.model = None                                                # placeholder for the model once it has been initialized
+        self.model_top = None                                            # placeholder for the top scoring model
+        self.model_top_loss = 0                                          # placeholding for the current top model's test loss
+        self.model_filename_root = "../models/model_"                    # default model filename
+        self.model_size = 600                                            # number of parameters for the hidden network layer
+        self.train_loader = None                                         # placeholder for the training dataloader
+        self.test_loader = None                                          # placeholder for the test dataloader
+        self.training_epochs = 1500                                      # default number of epochs to train the network for
+        self.training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
+        self.test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...should be the same as above unless running into GPU memory issues
+        self.training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
+        self.testing_workers = 8                                         # numer of dataloader workers to use for loading test data into the GPU
+        self.weight_decay = 0.001                                        # optimizer weight decay        
+        self.dropout = 0.15                                              # % of neurons to apply dropout to                                        
+        self.training_learning_rate = 0.03                               # default network learning rate
+        self.test_interval = 100                                         # model testing interval during training
+        self.pdiffGoal = 0.15     
+        
         # setup GPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device == "cuda":
             torch.cuda.init()
             print("Using ", self.device)
         self.feature_importance_df = pd.DataFrame(columns=['epoch'] + self.features)  # Initialize DataFrame for feature importance
+
+    def save_params_to_json(self, file_name='object_data.json'):
+        def is_json_serializable(value):
+            try:
+                json.dumps(value)
+                return True
+            except (TypeError, OverflowError):
+                return False
+        
+        def serialize(obj):
+            if is_json_serializable(obj):
+                return obj
+            elif isinstance(obj, ai):
+                return {key: self.serialize(value) for key, value in obj.__dict__.items()}
+            elif isinstance(obj, dict):
+                return {key: self.serialize(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [self.serialize(item) for item in obj]
+            elif isinstance(obj, tuple):
+                return tuple(self.serialize(item) for item in obj)
+            elif isinstance(obj, set):
+                return {self.serialize(item) for item in obj}
+            else:
+                return str(obj)
+            
+        data = {key: serialize(value) for key, value in self.__dict__.items()}
+        with open(file_name, 'w') as json_file:
+            json.dump(data, json_file, indent=4)
 
     def get_model_list(self, path, extension='pt'): # def get_model_list(self, path, extension='pkl'):
         # returns a list of models in the specified path
@@ -161,8 +191,9 @@ class ai:
             return False
     
     def model_save(self, specific_model):
-        # triggers the model save process
+        # triggers the model save process, saving the model plus any assocaited parameters as a .pt and .json files
         specific_model.save()
+        self.save_params_to_json(specific_model.filename_root + "_params.json")
 
     def calculate_accuracy(self, predicted, known):
         # move data back to main memory for CPU processing
@@ -201,7 +232,7 @@ class ai:
         plt.show()
         plt.close()
 
-    def train(self, model, x_train, y_train, x_test, y_test, epochs=training_epochs, learning_rate=training_learning_rate, accumulation_steps=4):
+    def train(self, model, x_train, y_train, x_test, y_test, accumulation_steps=4):
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             torch.cuda.synchronize()
@@ -215,7 +246,7 @@ class ai:
         self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
         criterion = nn.HuberLoss(delta=500)
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=self.weight_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=self.training_learning_rate, weight_decay=self.weight_decay)
 
         col3, col4 = st.columns([1, 1])
         with col4:
@@ -223,14 +254,14 @@ class ai:
         with col3:
             data = pd.DataFrame({'Epoch': [], 'Loss': []})
             chart = alt.Chart(data).mark_line(color='red').encode(
-                x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')),
+                x=alt.X('Epoch', scale=alt.Scale(domain=(0, self.training_epochs)), axis=alt.Axis(title='Epochs')),
                 y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
             ).properties(title='Logarithmic Loss vs Epochs')
             alt_chart = st.altair_chart(chart, use_container_width=False)
 
             feature_importance_chart = st.empty()  # Initialize an empty container for the feature importance chart
 
-            for epoch in range(epochs):
+            for epoch in range(self.training_epochs):
                 epoch_start = time.time()  # Start time of the epoch
                 model.train()
                 total_loss = 0
@@ -257,12 +288,12 @@ class ai:
                 new_data = pd.DataFrame({'Epoch': [epoch], 'Loss': [average_loss]})
                 data = pd.concat([data, new_data], ignore_index=True)
                 chart = alt.Chart(data).mark_line(color='red').encode(
-                    x=alt.X('Epoch', scale=alt.Scale(domain=(0, epochs)), axis=alt.Axis(title='Epochs')), 
+                    x=alt.X('Epoch', scale=alt.Scale(domain=(0, self.training_epochs)), axis=alt.Axis(title='Epochs')), 
                     y=alt.Y('Loss', scale=alt.Scale(type='log'), axis=alt.Axis(title='Logarithmic Loss'))
                 )
                 alt_chart.altair_chart(chart)
 
-                print(f'Epoch [{epoch+1}/{epochs}], Loss: {average_loss:.4f}, Time: {epoch_duration:.2f} sec')
+                print(f'Epoch [{epoch+1}/{self.training_epochs}], Loss: {average_loss:.4f}, Time: {epoch_duration:.2f} sec')
 
                 if (epoch+1) % self.test_interval == 0:
                     # Predictions and test metrics
@@ -324,7 +355,7 @@ class ai:
             # Final model saving after training
             if(self.model_top != None):
                 self.model = self.model_top
-            self.model.save()
+            self.model_save(self.model)
 
     def test(self, model, test_loader):
         criterion = nn.MSELoss()
@@ -437,9 +468,6 @@ class ai:
 
 # *Somewhat* simple neural network!
 class LinearNN(nn.Module):
-    # object parameters
-    filename = None
-    filename_root = None
 
     def __init__(self, input_size, layer_size, dropout, filename_root):
         super(LinearNN, self).__init__()
@@ -482,13 +510,13 @@ class LinearNN(nn.Module):
 
         return True
         
-    def load_model_for_inference(self, filename=filename):
+    def load_model_for_inference(self):
         try:
             # Load the entire JIT-compiled model
-            self.model = torch.jit.load(filename, map_location=torch.device('cpu'))
+            self.model = torch.jit.load(self.filename, map_location=torch.device('cpu'))
             # Switch the model to evaluation mode
             self.model.eval()
-            print(f"Model loaded from {filename}")
+            print(f"Model loaded from {self.filename}")
             return True
         except Exception as e:
             # Print the exception and return False if any error occurs
