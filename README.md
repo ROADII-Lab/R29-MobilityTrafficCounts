@@ -220,7 +220,7 @@ Model file saved to ../models/model__20240329_194737
 
 The user may proceed to the "Results" tab after training or testing an AI model. The user may choose a date and time range to display the input data and the predicted data using that input dataset. Figure 13 shows the datepicker widget in the Streamlit GUI.
 
-<img src="resources/13_StreamlitResults_datehourpicker.png" width="450">
+<img src="resources/13_StreamlitResults_datepicker.png" width="450">
 
 *Figure 13. Results Tab - Date Picker to Filter Results (courtesy https://github.com/imdreamer2018/streamlit-date-picker)*
 
