@@ -224,7 +224,7 @@ The user may proceed to the "Results" tab after training or testing an AI model.
 
 *Figure 13. Results Tab - Date Picker to Filter Results (courtesy https://github.com/imdreamer2018/streamlit-date-picker)*
 
-After the user has chosen a date and time range, Figure 14 shows the display of input data on a Folium map in the Streamlit GUI (filtered by datetime). Each road segment is indicated by a Folium icon and line segment. The icon and line segment are colored with respect to traffic volume, a darker shade of blue (input data) indicates that the traffic volume at that road segment is in a higher quintile within the entire set of traffic volumes. Figure 15, Figure 16, and Figure 17 are example close-up views of an urban, suburban, and rural road segment, respectively; arbitrary icon and road segment colors are used for these figures only for this readme document.
+After the user has chosen a date to show results, Figure 14 shows the display of input data on a Folium map in the Streamlit GUI whose timestamp falls within the selected date. Each road segment is indicated by a Folium icon and line segment. The icon and line segment are colored with respect to traffic volume, a darker shade of blue (input data) indicates that the traffic volume at that road segment is in a higher quintile within the entire set of traffic-volume-per-road-segment data. Figure 15, Figure 16, and Figure 17 are example close-up views of an urban, suburban, and rural road segment, respectively. Note that in some of the following figures – the icon color and design may not reflect the latest release of the code base.
 
 <img src="resources/14_StreamlitResults_inputdata.png" width="600">
 
