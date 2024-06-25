@@ -25,13 +25,16 @@ class ai:
 
     def __init__(self) -> None:
         
-        # settings / object properties
+        # settings / object property defaults
         self.features = ['feature1', 'feature2', 'feature3']             # replace these at run time with the feature list from the data object!
         self.target = "target_feature1"                                  # this is what we are predicting, also supplied via the data object
         self.training_split = 0.10                                       # controls the amount of data to use for train/test
         self.model = None                                                # placeholder for the model once it has been initialized
+        self.model_version = 1                                           # number of times model is replaced during the training process due to better performance
         self.model_top = None                                            # placeholder for the top scoring model
-        self.model_top_loss = 0                                          # placeholding for the current top model's test loss
+        self.model_top_loss = 0                                          # placeholder for the current top model's test loss
+        self.model_R2 = 0                                                # placeholder for the model's current R2 score
+        self.model_within_percent = 0                                    # placeholder for the model's current within x% score
         self.model_filename_root = "../models/model_"                    # default model filename
         self.model_size = 600                                            # number of parameters for the hidden network layer
         self.train_loader = None                                         # placeholder for the training dataloader
@@ -196,19 +199,16 @@ class ai:
         self.save_params_to_json(specific_model.filename_root + "_params.json")
 
     def calculate_accuracy(self, predicted, known):
-        # move data back to main memory for CPU processing
-        predicted_cpu = predicted.cpu()
-        known_cpu = known.cpu()
 
-        if predicted_cpu.shape != known_cpu.shape:
+        if predicted.shape != known.shape:
             raise ValueError("The two tensors must be of the same shape!")
 
-        print("Test set size =", known_cpu.shape[0])
+        print("Test set size =", known.shape[0])
 
-        SST = torch.sum(torch.pow(known_cpu - torch.mean(known_cpu), 2))
-        SSR = torch.sum(torch.pow((known_cpu - predicted_cpu), 2))
+        SST = torch.sum(torch.pow(known - torch.mean(known), 2))
+        SSR = torch.sum(torch.pow((known - predicted), 2))
 
-        percDiff = torch.divide(torch.abs(torch.sub(known_cpu, predicted_cpu)), known_cpu)
+        percDiff = torch.divide(torch.abs(torch.sub(known, predicted)), known)
 
         plt.figure()
         plt.hist(100*percDiff[percDiff.isfinite()], bins=[i for i in range(0, 155, 5)])
@@ -222,13 +222,10 @@ class ai:
         return 1 - SSR / SST, percBelow
     
     def plot_convergence(self, predicted, known):
-        # Ensure tensors are moved to CPU before plotting
-        predicted_cpu = predicted.cpu()
-        known_cpu = known.cpu()
 
         plt.figure()
-        plt.plot(known_cpu, predicted_cpu, 'k.')
-        plt.ylim(top=int(torch.max(known_cpu) + (0.10 * torch.max(known_cpu))))
+        plt.plot(known, predicted, 'k.')
+        plt.ylim(top=int(torch.max(known) + (0.10 * torch.max(known))))
         plt.show()
         plt.close()
 
@@ -302,10 +299,10 @@ class ai:
                     all_predictions = []
                     all_y_test = []
 
-                    all_predictions, all_y_test, test_loss, R2, Within10 = self.test(model, self.test_loader)
+                    all_predictions, all_y_test, test_loss, R2, Within_percent = self.test(model, self.test_loader)
 
                     # plot data within x %
-                    print(f'Test Loss: {test_loss:.4f}; R2: {R2:.4f}; {Within10:.2f}% are within {100*self.pdiffGoal}% of expected')
+                    print(f'Test Loss: {test_loss:.4f}; R2: {R2:.4f}; {Within_percent:.2f}% are within {100*self.pdiffGoal}% of expected')
                     
                     # plot convergence
                     self.plot_convergence(all_predictions, all_y_test)
@@ -315,10 +312,13 @@ class ai:
                     if(self.model_top == None):
                         self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
 
-                    if test_loss < self.model_top_loss:
+                    # need to use our metrics to keep the highest performing model
+                    if R2 >= self.model_R2 and Within_percent >= self.model_within_percent:
                         self.model_top = copy.deepcopy(model.module if isinstance(model, nn.DataParallel) else model)
                         self.model_top_loss = test_loss
-                        self.model_top.save()
+                        self.model_R2 = float(R2)
+                        self.model_within_percent = Within_percent
+                        self.model_save(self.model_top)
 
                     # Calculate feature importance
                     feature_importance = self.calculate_feature_importance(model, x_test, y_test)
@@ -376,19 +376,23 @@ class ai:
                 all_y_test.append(y_batch)
 
         # Concatenate all batches for calculating accuracy and other metrics
-        all_predictions = torch.cat(all_predictions, dim=0)
-        all_y_test = torch.cat(all_y_test, dim=0)
+        all_predictions = torch.cat(all_predictions, dim=0).cpu()
+        all_y_test = torch.cat(all_y_test, dim=0).cpu()
 
         R2, Within10 = self.calculate_accuracy(all_predictions, all_y_test)
         average_test_loss = total_loss / len(test_loader)
-
-        # print(f'Test Loss: {average_test_loss}, R2: {R2}, {Within10}% are within {100*self.pdiffGoal} Percent of Expected')
         
         # Release GPU memory
         del x_batch, y_batch, predictions, test_loss
         torch.cuda.empty_cache()
 
-        return all_predictions, all_y_test, average_test_loss, R2, Within10
+        # Create DataFrame
+        df = pd.DataFrame(all_y_test, columns=['actual'])
+        df['predicted'] = all_predictions
+
+        print(df)
+
+        return df, all_y_test, average_test_loss, R2, Within10
 
     def plot_feature_importance_terminal(self, top_10_features):
         # Plotting with Matplotlib for terminal
