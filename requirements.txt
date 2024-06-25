@@ -19,7 +19,6 @@ sentencepiece
 shapely
 statistics
 streamlit
-streamlit-date-picker
 streamlit-folium
 torch
 wxPython

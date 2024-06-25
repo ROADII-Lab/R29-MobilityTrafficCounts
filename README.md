@@ -220,25 +220,25 @@ Model file saved to ../models/model__20240329_194737
 
 The user may proceed to the "Results" tab after training or testing an AI model. The user may choose a date and time range to display the input data and the predicted data using that input dataset. Figure 13 shows the datepicker widget in the Streamlit GUI.
 
-<img src="resources/13_StreamlitResults_datehourpicker.png" width="450">
+<img src="resources/13_StreamlitResults_datepicker.png" width="450">
 
 *Figure 13. Results Tab - Date Picker to Filter Results (courtesy https://github.com/imdreamer2018/streamlit-date-picker)*
 
-After the user has chosen a date and time range, Figure 14 shows the display of input data on a Folium map in the Streamlit GUI (filtered by datetime). Each road segment is indicated by a Folium icon and line segment. The icon and line segment are colored with respect to traffic volume, a darker shade of blue (input data) indicates that the traffic volume at that road segment is in a higher quintile within the entire set of traffic volumes. Figure 15, Figure 16, and Figure 17 are example close-up views of an urban, suburban, and rural road segment, respectively; arbitrary icon and road segment colors are used for these figures only for this readme document.
+After the user has chosen a date to show results, Figure 14 shows the display of input data on a Folium map in the Streamlit GUI whose timestamp falls within the selected date. Each road segment is indicated by a Folium icon and line segment. The icon and line segment are colored with respect to traffic volume, a darker shade of blue (input data) indicates that the traffic volume at that road segment is in a higher quintile within the entire set of traffic-volume-per-road-segment data. Figure 15, Figure 16, and Figure 17 are example close-up views of an urban, suburban, and rural road segment, respectively. Note that in some of the following figures – the icon color and design may not reflect the latest release of the code base.
 
 <img src="resources/14_StreamlitResults_inputdata.png" width="600">
 
 *Figure 14. Results Tab - Display of Input Data*
 
-<img src="resources/15_StreamlitResults_inputdata_urban.png" width="600">
+<img src="resources/15_StreamlitResults_inputdata_urban.png" width="450">
 
 *Figure 15. Results Tab - Display of Input Data (Urban Road Segment)*
 
-<img src="resources/16_StreamlitResults_inputdata_suburban.png" width="600">
+<img src="resources/16_StreamlitResults_inputdata_suburban.png" width="450">
 
 *Figure 16. Results Tab - Display of Input Data (Suburban Road Segment)*
 
-<img src="resources/17_StreamlitResults_inputdata_rural.png" width="600">
+<img src="resources/17_StreamlitResults_inputdata_rural.png" width="450">
 
 *Figure 17. Results Tab - Display of Input Data (Rural Road Segment)*
 
