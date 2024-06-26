@@ -2,6 +2,7 @@ import copy
 import os
 import json
 import time
+import joblib
 import pandas as pd
 import numpy as np
 import torch
@@ -40,15 +41,17 @@ class ai:
         self.train_loader = None                                         # placeholder for the training dataloader
         self.test_loader = None                                          # placeholder for the test dataloader
         self.training_epochs = 1500                                      # default number of epochs to train the network for
+        self.current_training_epoch = 0                                  # placeholder for the current epoch counter
         self.training_batch_size = 850000                                # number of records we *think* we can fit into the GPU...
         self.test_batch_size = 850000                                    # number of records we *think* we can fit into the GPU...should be the same as above unless running into GPU memory issues
         self.training_workers = 16                                       # number of dataloader workers to use for loading training data into the GPU
-        self.testing_workers = 8                                         # numer of dataloader workers to use for loading test data into the GPU
+        self.testing_workers = 4                                         # numer of dataloader workers to use for loading test data into the GPU
         self.weight_decay = 0.001                                        # optimizer weight decay        
         self.dropout = 0.15                                              # % of neurons to apply dropout to                                        
         self.training_learning_rate = 0.03                               # default network learning rate
-        self.test_interval = 100                                         # model testing interval during training
-        self.pdiffGoal = 0.15     
+        self.test_interval = 10                                         # model testing interval during training
+        self.pdiffGoal = 0.15
+        self.scaler = None                                               # placeholder for the scaler which is fitted to the training data     
         
         # setup GPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -163,9 +166,9 @@ class ai:
         print("Test set size is", len(y_test),"records.")
 
         # Standardize the features
-        scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
+        self.scaler = StandardScaler()
+        X_train = self.scaler.fit_transform(X_train)
+        X_test = self.scaler.transform(X_test)
 
         # Convert the data to PyTorch tensors
         X_train_tensor = torch.tensor(X_train.astype(np.float32))
@@ -174,28 +177,100 @@ class ai:
         y_test_tensor = torch.tensor(y_test.values.astype(np.float32)).view(-1, 1)
 
         return X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor
+
+    def format_inference_data(self, dataframe):
+        # formats features for input into the model to make predictions
+        # NOTE: this is not where the primary data features are created, that is performed within the data module itself.
+        X = dataframe[self.features]
+
+        # data sanity checks
+        if X.isnull().values.any():
+            print("WARNING: Null values detected in training data!")
+        
+        if np.isinf(X).values.any():
+            print("WARNING: Infinate values detected!")
+
+        if X.duplicated().any():
+            print(f'Duplicates: {len(X[X.duplicated()])}')
+            print("WARNING: Duplicate rows detected!")
+
+        print("Input Features:", list(X))
+
+        # Output some basic debug info
+        print("Data set size is", len(X),"records.")
+
+        # Standardize the features using the same scaler fitted during training (loaded from disk)
+        X = self.scaler.transform(X)
+
+        return torch.tensor(X.astype(np.float32))
     
-    def model_init(self, x_dim):
+    def model_inference(self, dataframe):
+        if torch.cuda.device_count() > 1:
+            print(f"Using {torch.cuda.device_count()} GPUs!")
+            torch.cuda.synchronize()
+            self.model = nn.DataParallel(self.model)
+        
+        # Ensure the model is in evaluation mode
+        self.model.eval()
+        
+        # Format the inference data
+        X_tensor = self.format_inference_data(dataframe)
+        
+        # Move data to the appropriate data structure for batch processing
+        inference_dataset = TensorDataset(X_tensor)
+        inference_loader = DataLoader(dataset=inference_dataset, batch_size=self.test_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
+        
+        # Initialize an empty list to store predictions
+        all_predictions = []
+        
+        # Perform inference in batches
+        with torch.no_grad():
+            for batch_X_tensor in inference_loader:
+                batch_X_tensor = batch_X_tensor[0].to(self.device)  # Assuming model and data are on the same device
+                batch_predictions = self.model(batch_X_tensor)
+                all_predictions.append(batch_predictions)
+        
+        # Concatenate all predictions
+        # predictions = np.concatenate(all_predictions, axis=0)
+        predictions = torch.cat(all_predictions, dim=0).cpu()
+
+        # Convert predictions to integers
+        df = pd.DataFrame(predictions, columns=['predicted'])
+        df['predicted'] = df['predicted'].astype(int)
+        
+        return df
+    
+    def scaler_load(self, filename):
+        # load the previously fitted scaler for inference
+        self.scaler = StandardScaler()
+        self.scaler = joblib.load(filename)
+
+        return 
+
+    def scaler_save(self, scaler, filename):
+        # saves the mean standard diviation scaler to a pickle file to be used later during inference
+        joblib.dump(scaler, filename)
+
+    def model_init(self, x_dim, filename=None):
         # Initialize the neural network
         input_size = x_dim.shape[1]
-        self.model = LinearNN(input_size, self.model_size, self.dropout, self.model_filename_root)
+        self.model = LinearNN(input_size, self.model_size, self.dropout, self.model_filename_root, filename=filename)
         self.model.to(self.device)
         return 
-    
-    def model_load(self, x_dim, filename):
+
+    def model_load(self, dataframe, filename):
         # loads the model using specified filename
-        self.model_init(x_dim, self.model_filename_root)
+        self.model_init(dataframe, filename=filename)
+        # Extract the filename plus path root from self.filename and update self.filename_root
+        self.model.filename_root = os.path.splitext(filename)[0]
         self.model.filename = filename
-        print("Loading model:", self.model.filename)
-        if self.model.load_model_for_inference():
-            self.model.to(self.device)
-            return True
-        else:
-            return False
-    
+        self.model.to(self.device)
+        self.scaler_load(self.model.filename_root + "_scaler.pkl")
+
     def model_save(self, specific_model):
         # triggers the model save process, saving the model plus any assocaited parameters as a .pt and .json files
         specific_model.save()
+        self.scaler_save(self.scaler, specific_model.filename_root + "_scaler.pkl")
         self.save_params_to_json(specific_model.filename_root + "_params.json")
 
     def calculate_accuracy(self, predicted, known):
@@ -240,7 +315,7 @@ class ai:
         train_dataset = TensorDataset(x_train, y_train)
         self.train_loader = DataLoader(dataset=train_dataset, batch_size=self.training_batch_size // accumulation_steps, shuffle=True, num_workers=self.training_workers, pin_memory=True)
         test_dataset = TensorDataset(x_test, y_test)
-        self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.training_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
+        self.test_loader = DataLoader(dataset=test_dataset, batch_size=self.test_batch_size, shuffle=False, num_workers=self.testing_workers, pin_memory=True)
 
         criterion = nn.HuberLoss(delta=500)
         optimizer = optim.AdamW(model.parameters(), lr=self.training_learning_rate, weight_decay=self.weight_decay)
@@ -259,6 +334,7 @@ class ai:
             feature_importance_chart = st.empty()  # Initialize an empty container for the feature importance chart
 
             for epoch in range(self.training_epochs):
+                self.current_training_epoch = (epoch+1)
                 epoch_start = time.time()  # Start time of the epoch
                 model.train()
                 total_loss = 0
@@ -358,7 +434,8 @@ class ai:
             self.model_save(self.model)
 
     def test(self, model, test_loader):
-        criterion = nn.MSELoss()
+        # criterion = nn.MSELoss()
+        criterion = nn.HuberLoss(delta=500)
         model.eval()
 
         total_loss = 0
@@ -390,6 +467,8 @@ class ai:
         df = pd.DataFrame(all_y_test, columns=['actual'])
         df['predicted'] = all_predictions
 
+        # force predictions to be integrers
+        df['predicted'] = df['predicted'].astype(int)
         print(df)
 
         return df, all_y_test, average_test_loss, R2, Within10
@@ -473,7 +552,7 @@ class ai:
 # *Somewhat* simple neural network!
 class LinearNN(nn.Module):
 
-    def __init__(self, input_size, layer_size, dropout, filename_root):
+    def __init__(self, input_size, layer_size, dropout, filename_root, filename=None):
         super(LinearNN, self).__init__()
         self.fc1 = nn.Linear(input_size, int(layer_size*2))
         self.bn1 = nn.BatchNorm1d(int(layer_size*2))
@@ -489,7 +568,11 @@ class LinearNN(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         # setup filename
-        self.filename = self.create_filename(filename_root)
+        if filename == None:
+            self.filename = self.create_filename(filename_root)
+        else:
+            self.filename = filename
+            self.load_model_for_inference()
 
     def forward(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
@@ -517,11 +600,17 @@ class LinearNN(nn.Module):
     def load_model_for_inference(self):
         try:
             # Load the entire JIT-compiled model
-            self.model = torch.jit.load(self.filename, map_location=torch.device('cpu'))
+            loaded_model = torch.jit.load(self.filename, map_location=torch.device('cpu'))
             # Switch the model to evaluation mode
-            self.model.eval()
+            loaded_model.eval()
+
+            # Transfer the state from the loaded model to the current instance
+            self.load_state_dict(loaded_model.state_dict())
+
             print(f"Model loaded from {self.filename}")
+
             return True
+
         except Exception as e:
             # Print the exception and return False if any error occurs
             print(e)

@@ -4,13 +4,14 @@ import pandas as pd
 import os
 import sys
 import pickle
+import argparse
 
 # Import custom modules
 import module_ai
 import module_data
 import setup_funcs
 
-def main(data_directory):
+def main(data_directory, train, model):
     # Validate the provided data directory
     if not os.path.isdir(data_directory):
         print(f"The path {data_directory} does not point to a valid directory.")
@@ -33,6 +34,7 @@ def main(data_directory):
     ]
 
     # Load all pickle files in the directory
+    print("Loading data...")
     dataframes = []
     for file_name in os.listdir(data_directory):
         if file_name.endswith(".pkl"):
@@ -60,13 +62,22 @@ def main(data_directory):
 
     print(normalized_df)
 
-    # Train and test the model
-    result = setup_funcs.train_model(ai, normalized_df, columns, 'VOL')
-    print("Testing final model...")
-    print(setup_funcs.test_model(ai, normalized_df, columns, 'VOL'))
+    if train:
+        # Train and test the model
+        result = setup_funcs.train_model(ai, normalized_df, columns, 'VOL')
+        print("Testing final model...")
+        print(setup_funcs.test_model(ai, normalized_df, columns, 'VOL'))
+    else:
+        # Run inference using the data and model provided
+        if model:
+            print(setup_funcs.use_model(ai, model, normalized_df, columns, 'VOL'))
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python script_name.py <data_directory_path>")
-    else:
-        main(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Mobility Counts Prediction Script')
+    parser.add_argument('--train', action='store_true', help='Flag to train the model')
+    parser.add_argument('--data', type=str, required=True, help='Path to the data directory')
+    parser.add_argument('--model', type=str, required=False, help='Path to the model file')
+
+    args = parser.parse_args()
+
+    main(args.data, args.train, args.model)

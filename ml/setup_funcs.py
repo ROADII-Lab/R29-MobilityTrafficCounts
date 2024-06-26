@@ -37,6 +37,34 @@ def test_model(ai, normalized_df, in_cols, target_col):
     
     return predictions, y_test, test_loss, (R2, Within15)
 
+def use_model(ai, model_filename, normalized_df, in_cols, output_column_name = "VOL"):
+    def remove_column_if_exists(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+        # Remove a column from a DataFrame if it exists.
+        if column_name in df.columns:
+            df = df.drop(columns=[column_name])
+        return df
+    
+    # make sure the output column does not already exist
+    normalized_df = remove_column_if_exists(normalized_df, output_column_name)
+
+    # setup training / test data
+    ai.features = in_cols
+    ai.target = output_column_name
+
+    # load the model or use a model that's already loaded
+    if ai.model == None:
+        ai.model_load(normalized_df, model_filename)
+
+    if ai.model != None:
+        predictions = ai.model_inference(normalized_df)
+    else:
+        print("No model loaded, check file path!")
+        return None
+    column_name = 'Predicted_' + output_column_name
+    normalized_df[column_name]= predictions['predicted']
+    
+    return normalized_df
+
 def setup():
     # init ai module
     ai = module_ai.ai()
@@ -44,13 +72,8 @@ def setup():
     # init data module
     source_data = module_data.data()
 
-    # init census data (using saved data for now)
-    # census_dataobj = module_census.census_data()
-    # census_data = census_dataobj.get_population_data_by_city(25)
-
     # setup data sources
-    census_df = pd.DataFrame() #pd.DataFrame(census_data)
     result_df = source_data.read()
     normalized_df = source_data.normalized()
 
-    return census_df, result_df, normalized_df, ai, source_data
+    return result_df, normalized_df, ai, source_data
