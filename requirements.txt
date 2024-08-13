@@ -7,9 +7,11 @@ drawilleplot
 folium
 geopandas
 matplotlib
+narwhals
 nltk
 pandas
 pillow==9.5.0
+plotly
 pyarrow
 requests
 s3fs
