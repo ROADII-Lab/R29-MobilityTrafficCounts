@@ -196,10 +196,10 @@ def generate_available_stations():
     print(f"Successfully saved unique combinations of 'STATION_ID' and 'STATE_NAME' to {output_filepath}")
 
 def load_pkl():
-    data = pickle.load(open(r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_US_SUBSET_1000_22/000002_GA_2022.pkl', "rb"))
-    data2 = pickle.load(open(r'C:\Users\Michael.Barzach\OneDrive - DOT OST\R29-MobilityCounts\JOINED_FILES\NPMRDS_TMC_TMAS_US_SUBSET_1000_22/0AET09_MA_2022.pkl', "rb"))
-    data.to_csv("station1.csv", index=False) 
-    data2.to_csv("station2.csv", index=False) 
+    data = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\NPMRDS_TMC_TMAS_US_SUBSET_20_22_predictions.pkl', "rb"))
+    #data2 = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\NPMRDS_TMC_TMAS_US_SUBSET_20_22.pkl', "rb"))
+    data.to_csv("predictions.csv", index=False) 
+    #data2.to_csv("station2.csv", index=False) 
     breakpoint()
 
 def main():

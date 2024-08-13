@@ -44,21 +44,10 @@ class data(object):
         
         # output
         self.always_cache_data = True
-        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl'
-        self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/' 
+        self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl' 
         self.prejoin = r'../data/prejoin.pkl'
+        self.dataset_year = '2022'
 
-
-        # setup data sources
-        '''
-        self.tmas = self.tmas_data()
-        if not os.path.isfile(self.tmas.TMAS_PKL_FILE):
-            # tmas.read() opens the csv and saves as pkl for performance during later joins
-            # if the pkl file already exists, this doesn't need to be run
-            self.tmas.read()
-        self.npmrds = self.npmrds_data()
-        self.tmc = self.tmc_data()
-        '''
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
                                 'measurement_tstamp', # already normalized (yyyy-mm-dd hh:mm:ss)
@@ -179,7 +168,8 @@ class data(object):
 
         print('Outputting into directory of .pkl files')
         # Change year of dataset here
-        self.split_into_pkl_dir('2022')
+        self.split_into_pkl_dir(self.dataset_year)
+        self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/'
         print(f'directory created at: {self.output_dir}')
 
         return final_output
@@ -216,7 +206,7 @@ class data(object):
         chunksize = 5000000   # Adjust this value based on your memory constraints and file size
 
         # Read TMAS data .pkl file into a DataFrame
-        TMAS_Data = pickle.load(open(self.tmas.TMAS_PKL_FILE, "rb"))
+        TMAS_Data = pickle.load(open(self.tmas_data.TMAS_PKL_FILE, "rb"))
         NPMRDS_TMC['STATION_ID'] = NPMRDS_TMC['STATION_ID'].astype(str)
         TMAS_Data['STATION_ID'] = TMAS_Data['STATION_ID'].astype(str)
 
