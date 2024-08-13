@@ -242,8 +242,9 @@ After the user has chosen a date to show results, Figure 14 shows the display of
 
 *Figure 17. Results Tab - Display of Input Data (Rural Road Segment)*
 
-*{to add: display of predicted data}*
-*Figure 18. Results Tab - Display of Predicted Data*
+<img src="resources/18_StreamlitResults_compareinputtopredicted.png" width="450">
+
+*Figure 18. Results Tab - Compare Input Data and Predicted Data for a Traffic Station*
 
 
 # 4. Additional Notes
