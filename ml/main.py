@@ -308,7 +308,7 @@ with tab1:
         st.session_state.dialog = dialog
         if dialog.ShowModal() == wx.ID_OK:
             file_path = dialog.GetPath()  # file_path will contain the path of the folder you have selected as string
-            result_df, normalized_df, ai, source_data, geo_df = setup(folder_path)
+            result_df, normalized_df, ai, source_data, geo_df = setup(file_path)
             # breakpoint() # to fill [normalized_df] and work with it
         else:
             result_df = pd.DataFrame()
