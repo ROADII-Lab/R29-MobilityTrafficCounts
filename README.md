@@ -246,7 +246,7 @@ After the user has chosen a date to show results, Figure 14 shows the display of
 
 *Figure 18. Results Tab - Compare Input Data and Predicted Data for a Traffic Station*
 
-<img src="resources/19_Test.png" width="450">
+<img src="resources/19_Test.PNG" width="450">
 
 *Figure 19. test caption*
 
