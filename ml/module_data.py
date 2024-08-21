@@ -373,7 +373,7 @@ class data(object):
 
         # Update column names and training set to include all calculated columns, then reset calculated columns
         self.features_column_names.extend(self.calculated_columns)
-        self.features_training_set.extend(self.calculated_columns)  
+        self.features_training_set.extend(self.calculated_columns) 
 
     def normalized(self, training=True):
         # Call apply_normalization to run all normalization functions (that modify the prepared dataset)
@@ -387,6 +387,10 @@ class data(object):
         
         # Sort normalized data set by tmc_code, TMC_Value, measurement_tstamp
         self.normalized_dataset = self.normalized_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
+
+        # remove the TMC_code column
+        self.normalized_dataset.drop('tmc_code', axis='columns')
+
         return self.normalized_dataset
     
     
