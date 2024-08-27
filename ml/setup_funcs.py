@@ -43,7 +43,6 @@ def use_model(ai, model_filename, normalized_df, in_cols, output_column_name = "
         if column_name in df.columns:
             df = df.drop(columns=[column_name])
         return df
-    
     # make sure the output column does not already exist
     normalized_df = remove_column_if_exists(normalized_df, output_column_name)
 
@@ -61,8 +60,9 @@ def use_model(ai, model_filename, normalized_df, in_cols, output_column_name = "
         print("No model loaded, check file path!")
         return None
     column_name = 'Predicted_' + output_column_name
+    normalized_df.reset_index(drop=True, inplace=True)
+    predictions.reset_index(drop=True, inplace=True)
     normalized_df[column_name]= predictions['predicted']
-    
     return normalized_df
 
 def setup():

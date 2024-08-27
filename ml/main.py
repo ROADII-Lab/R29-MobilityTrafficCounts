@@ -415,6 +415,7 @@ with tab2:
                       labels={'value': 'Traffic Counts', 'variable': 'Legend'},
                       title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
         st.plotly_chart(fig)
+        answer_df_merged.plot(x = 'start_longitude_norm', y= 'start_latitude_norm')
     else:
         st.write('Please select a raw dataset and run the model to proceed.')
 
