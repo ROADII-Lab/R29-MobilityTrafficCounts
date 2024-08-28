@@ -1,6 +1,7 @@
 # Mobility Counts Prediction
 # 
 import pandas as pd
+import numpy as np
 
 # Import custom modules
 import module_ai
@@ -101,23 +102,17 @@ def calculate_performance_metrics(answer_df_merged):
     night_df = answer_df_merged[answer_df_merged['measurement_tstamp'].dt.hour.isin(night_hours)]
     night_diff = ((night_df['Predicted_VOL'] - night_df['VOL']).abs() / night_df['VOL']).mean() * 100
 
-    # Calculate percentage within 15% for overall
-    overall_within_15 = (abs(answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']) <= 0.15 * answer_df_merged['VOL']).mean() * 100
-
-    # Calculate percentage within 15% for daytime
-    day_within_15 = (abs(day_df['Predicted_VOL'] - day_df['VOL']) <= 0.15 * day_df['VOL']).mean() * 100
-
-    # Calculate percentage within 15% for nighttime
-    night_within_15 = (abs(night_df['Predicted_VOL'] - night_df['VOL']) <= 0.15 * night_df['VOL']).mean() * 100
+    # Calculate percentage within various thresholds for overall
+    thresholds = range(5, 51, 5)  # 5%, 10%, 15%, ... 50%
+    overall_within_percentages = [(abs(answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']) <= (threshold / 100) * answer_df_merged['VOL']).mean() * 100 for threshold in thresholds]
 
     # Compile results into a dictionary
     results = {
         'Overall Percent Difference': overall_diff,
         'Daytime Percent Difference': day_diff,
         'Nighttime Percent Difference': night_diff,
-        'Overall Percentage Within 15%': overall_within_15,
-        'Daytime Percentage Within 15%': day_within_15,
-        'Nighttime Percentage Within 15%': night_within_15
+        'Overall Percentage Within': overall_within_percentages,
+        'Thresholds': thresholds,
     }
 
     return results

@@ -398,8 +398,21 @@ with tab2:
         performance_metrics = setup_funcs.calculate_performance_metrics(answer_df_merged)
         
         st.write("Performance Metrics:")
-        for metric, value in performance_metrics.items():
-            st.write(f"{metric}: {value:.2f}%")
+        st.write(f"Overall Percent Difference: {performance_metrics['Overall Percent Difference']:.2f}%")
+        st.write(f"Daytime Percent Difference: {performance_metrics['Daytime Percent Difference']:.2f}%")
+        st.write(f"Nighttime Percent Difference: {performance_metrics['Nighttime Percent Difference']:.2f}%")
+
+        # Create a graph showing percentage of data within various thresholds
+        st.header('Percentage of Predictions Within Various Thresholds')
+        
+        thresholds = performance_metrics['Thresholds']
+        overall_within_percentages = performance_metrics['Overall Percentage Within']
+
+        fig = px.line(x=thresholds, y=overall_within_percentages,
+                    labels={'x': 'Percentage Threshold', 'y': 'Percentage of Predictions Within Threshold (%)'},
+                    title='Overall Percentage of Predictions Within Various Thresholds')
+        
+        st.plotly_chart(fig)
 
         # Create interactive visualization
         st.header('Visualize Predictions vs Measured Values')
