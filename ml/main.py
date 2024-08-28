@@ -393,6 +393,14 @@ with tab2:
     if 'answer_df_merged' in st.session_state:
         answer_df_merged = st.session_state['answer_df_merged']
 
+        # Calculate and display performance metrics
+        st.header('Performance Metrics')
+        performance_metrics = setup_funcs.calculate_performance_metrics(answer_df_merged)
+        
+        st.write("Performance Metrics:")
+        for metric, value in performance_metrics.items():
+            st.write(f"{metric}: {value:.2f}%")
+
         # Create interactive visualization
         st.header('Visualize Predictions vs Measured Values')
         tmc_code = st.selectbox('Select TMC Code', answer_df_merged['tmc_code'].unique())
@@ -404,18 +412,38 @@ with tab2:
         day_of_week = st.selectbox('Select Day of the Week', answer_df_merged['measurement_tstamp'].dt.day_name().unique())
 
         filtered_df = answer_df_merged[(answer_df_merged['tmc_code'] == tmc_code) & 
-                                       (answer_df_merged['DIR'] == direction) & 
-                                       (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
+                                    (answer_df_merged['DIR'] == direction) & 
+                                    (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
 
         # Aggregate data to get the average traffic volume for each hour
         filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
         avg_df = filtered_df.groupby('hour').agg({'VOL': 'mean', 'Predicted_VOL': 'mean'}).reset_index()
 
         fig = px.line(avg_df, x='hour', y=['VOL', 'Predicted_VOL'],
-                      labels={'value': 'Traffic Counts', 'variable': 'Legend'},
-                      title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
+                    labels={'value': 'Traffic Counts', 'variable': 'Legend'},
+                    title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
         st.plotly_chart(fig)
-        answer_df_merged.plot(x = 'start_longitude_norm', y= 'start_latitude_norm')
+
+        # Plot stations on a map of the United States
+        st.header('Map of Stations')
+        map_fig = px.scatter_geo(
+            answer_df_merged,
+            lat='start_latitude_norm',
+            lon='start_longitude_norm',
+            hover_name='tmc_code',  # Optional: show TMC code on hover
+            projection='albers usa',  # US-centric projection
+            title='Station Locations Across the United States'
+        )
+        map_fig.update_geos(
+            visible=True,
+            resolution=50,
+            showcountries=True, countrycolor="Black",
+            showcoastlines=True, coastlinecolor="Black",
+            showland=True, landcolor="white",
+            showocean=True, oceancolor="lightblue",
+        )
+        st.plotly_chart(map_fig)
+
     else:
         st.write('Please select a raw dataset and run the model to proceed.')
 
