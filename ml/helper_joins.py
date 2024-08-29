@@ -6,6 +6,7 @@ import matplotlib.dates as mdates  # Import for time manipulation
 from matplotlib.ticker import ScalarFormatter
 import os
 import module_data
+import re
 
 def run_joins():
     # init data module
@@ -196,11 +197,32 @@ def generate_available_stations():
     print(f"Successfully saved unique combinations of 'STATION_ID' and 'STATE_NAME' to {output_filepath}")
 
 def load_pkl():
-    data = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\NPMRDS_TMC_TMAS_US_SUBSET_20_22_predictions.pkl', "rb"))
-    #data2 = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\NPMRDS_TMC_TMAS_US_SUBSET_20_22.pkl', "rb"))
-    data.to_csv("predictions.csv", index=False) 
-    #data2.to_csv("station2.csv", index=False) 
-    breakpoint()
+
+    # Load the data from the pickle file
+    data = pickle.load(open(r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\NPMRDS_TMC_TMAS_US_SUBSET_20_22.pkl', "rb"))
+
+    # Create a regex pattern to match '104' followed by any character, and '04680'
+    pattern = re.compile(r'(104.04680)')
+
+    # Apply the filter using the regex pattern
+    filtered_data = data[data['tmc_code'].apply(lambda x: bool(pattern.search(str(x))))]
+
+    # Ensure that filtered_data is not empty
+    if not filtered_data.empty:
+        # Replace '04680' with '04679', keeping the character intact
+        filtered_data['tmc_code'] = filtered_data['tmc_code'].apply(lambda x: re.sub(r'04680', '04679', str(x)))
+
+        # Replace all values in the 'DIR' column with 3
+        filtered_data['DIR'] = 3
+
+        # Save the modified data back to a pickle file
+        output_path = r'C:\Users\Michael.Barzach\Documents\GitHub\R29-MobilityTrafficCounts\data\modified_data.pkl'
+        with open(output_path, 'wb') as f:
+            pickle.dump(filtered_data, f)
+
+        print("Data saved to", output_path)
+    else:
+        print("No data matched the filtering criteria.")
 
 def main():
     #TMAS_to_pkl()

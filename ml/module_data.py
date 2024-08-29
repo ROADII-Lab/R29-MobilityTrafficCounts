@@ -388,9 +388,6 @@ class data(object):
         # Sort normalized data set by tmc_code, TMC_Value, measurement_tstamp
         self.normalized_dataset = self.normalized_dataset.sort_values(by=['tmc_code','TMC_Value','measurement_tstamp'],ascending=[True,True,True])
 
-        # remove the TMC_code column
-        self.normalized_dataset.drop('tmc_code', axis='columns')
-
         return self.normalized_dataset
     
     
