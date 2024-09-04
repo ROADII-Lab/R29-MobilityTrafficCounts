@@ -421,10 +421,17 @@ with tab2:
         st.header('Performance Metrics')
         performance_metrics = setup_funcs.calculate_performance_metrics(answer_df_merged)
         
+        answer_df_merged['pred_diff'] = ((answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']).abs() / answer_df_merged['VOL'])
+
+        maxDiff = answer_df_merged['pred_diff'].max() * 100
+        maxDiffID = answer_df_merged['pred_diff'].idxmax()
+
         st.write("Performance Metrics:")
         st.write(f"Overall Percent Difference: {performance_metrics['Overall Percent Difference']:.2f}%")
         st.write(f"Daytime Percent Difference: {performance_metrics['Daytime Percent Difference']:.2f}%")
         st.write(f"Nighttime Percent Difference: {performance_metrics['Nighttime Percent Difference']:.2f}%")
+        st.write(f"Max Percent Difference: {maxDiff:.2f}% for TMC {answer_df_merged.loc[maxDiffID, 'tmc_code_raw']} on {answer_df_merged.loc[maxDiffID, 'measurement_tstamp'].day_name()}, {answer_df_merged.loc[maxDiffID, 'measurement_tstamp']}")
+
 
         # Create a graph showing percentage of data within various thresholds
         st.header('Percentage of Predictions Within Various Thresholds')
@@ -446,11 +453,13 @@ with tab2:
         available_directions = answer_df_merged[answer_df_merged['tmc_code_raw'] == tmc_code]['DIR'].unique()
         direction = st.selectbox('Select Direction', available_directions)
 
-        day_of_week = st.selectbox('Select Day of the Week', answer_df_merged['measurement_tstamp'].dt.day_name().unique())
+        date1 = st.date_input('Select Date to continue:', value="today")
 
-        filtered_df = answer_df_merged[(answer_df_merged['tmc_code'] == tmc_code) & 
+        filtered_df = answer_df_merged[(answer_df_merged['tmc_code_raw'] == tmc_code) & 
                                     (answer_df_merged['DIR'] == direction) & 
-                                    (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
+                                    (answer_df_merged['measurement_tstamp'].dt.year == date1.year) &
+                                    (answer_df_merged['measurement_tstamp'].dt.month == date1.month) &
+                                    (answer_df_merged['measurement_tstamp'].dt.day == date1.day)]
 
         # Aggregate data to get the average traffic volume for each hour
         filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
@@ -458,7 +467,7 @@ with tab2:
 
         fig = px.line(avg_df, x='hour', y=['VOL', 'Predicted_VOL'],
                     labels={'value': 'Traffic Counts', 'variable': 'Legend'},
-                    title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
+                    title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {date1}')
         st.plotly_chart(fig)
 
         # Plot stations on a map of the United States
