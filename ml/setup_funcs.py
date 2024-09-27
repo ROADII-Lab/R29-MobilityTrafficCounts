@@ -103,9 +103,9 @@ def calculate_performance_metrics(answer_df_merged):
     night_diff = ((night_df['Predicted_VOL'] - night_df['VOL']).abs() / night_df['VOL']).mean() * 100
 
     # Calculate percentage within various thresholds for overall
-    thresholds = range(5, 51, 5)  # 5%, 10%, 15%, ... 50%
-    overall_within_percentages = [(abs(answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']) <= (threshold / 100) * answer_df_merged['VOL']).mean() * 100 for threshold in thresholds]
-
+    thresholds = range(5, 76, 5)  # 5%, 10%, 15%, ... 50%
+    overall_within_percentages = [100*(abs((answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL'])/ answer_df_merged['VOL']) <= (threshold / 100)).sum()/len(answer_df_merged) for threshold in thresholds]
+    
     # Compile results into a dictionary
     results = {
         'Overall Percent Difference': overall_diff,

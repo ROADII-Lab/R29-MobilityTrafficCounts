@@ -215,6 +215,20 @@ def file_picker(label, key, style=wx.FD_OPEN, button_key=None):
     elif key in st.session_state:
         st.write(f"Selected {label}: {st.session_state[key]}")
 
+def folder_picker(label, key, style=wx.DD_DEFAULT_STYLE, button_key=None):
+    if st.button(f'Choose {label}', key=button_key):
+        app = wx.App(False)
+        dialog = wx.DirDialog(None, f'Select the {label}:', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file_path = dialog.GetPath()
+            st.session_state[key] = file_path
+            st.write(f"Selected {label}: {file_path}")
+        else:
+            st.write(f"No {label} selected.")
+        dialog.Destroy()
+    elif key in st.session_state:
+        st.write(f"Selected {label}: {st.session_state[key]}")
+
 # Function to create and run data joins
 def run_joins():
     source_data = module_data.data()
@@ -271,6 +285,7 @@ def merge_normalized_and_raw_data(raw_df, normalized_df):
                 return -1
 
         df['TMC_Value'] = df['tmc_code'].apply(tmc_value)
+        df['tmc_code_raw'] = df['tmc_code']
         df['tmc_code'] = df['tmc_code'].str.lower().str.replace('p', '').str.replace('n', '').str.replace('+', '').str.replace('-', '')
         df['tmc_code'] = df['tmc_code'].astype(int)
         return df
@@ -294,6 +309,7 @@ def merge_normalized_and_raw_data(raw_df, normalized_df):
     )
 
     return merged_df
+
 # Define tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs(['1. Train Model', '2. Test Model', '3. Results', '4. Generate Training/Testing Dataset', '5. About'])
 
@@ -355,7 +371,11 @@ with tab2:
     st.header('Use a Traffic Counts Model')
 
     # Input column(s) and target column GUI buttons (previous single window)
-    list_of_model_files = ai.get_model_list('..\models')
+    folder_picker('Choose Model Storage Location', 'model_storage_path', button_key='model_storage_path_picker')
+
+    if 'model_storage_path' in st.session_state:
+        list_of_model_files = ai.get_model_list(st.session_state['model_storage_path'])
+    else: list_of_model_files = []
     model_filename = st.selectbox(label='Choose a model file', options=list_of_model_files)
 
     # File picker for raw dataset path
@@ -379,21 +399,26 @@ with tab2:
                 'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
             ]
             columns.extend(t_source_data.calculated_columns)
+        base_name = os.path.basename(raw_dataset_path)
+        name, ext = os.path.splitext(base_name)
 
-            if st.button('Use Model'):
-                st.write('Running Loaded model on test dataset...')
-                answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
-                if answer_df.empty:
-                    st.write("Model or data was not properly loaded. Please check your inputs.")
-                else:
-                    answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
-                    # Save the results
-                    base_name = os.path.basename(raw_dataset_path)
-                    name, ext = os.path.splitext(base_name)
-                    output_file_path = os.path.join('..', 'data', f"{name}_predictions{ext}")
-                    answer_df_merged.to_pickle(output_file_path)
-                    st.session_state['answer_df_merged'] = answer_df_merged
-                    st.write(f"DataFrame saved to {output_file_path}")
+        st.session_state['answer_out_folder'] = ''
+        folder_picker('Choose Model Storage Location', 'answer_out_folder', button_key='answer_out_picker')
+        output_file_path = os.path.join(st.session_state['answer_out_folder'], f"{name}_predictions{ext}")
+
+        if st.button('Use Model'):
+            st.write('Running Loaded model on test dataset...')
+            answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
+            if answer_df.empty:
+                st.write("Model or data was not properly loaded. Please check your inputs.")
+            else:
+                answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
+                # Save the results
+                answer_df_merged.to_pickle(output_file_path)
+                st.session_state['answer_df_merged'] = answer_df_merged
+                st.write(f"DataFrame saved to {output_file_path}")
+
+
 
         else:
             st.write("The 'VOL' column is not present in the dataset. Generating predictions using the selected model.")
@@ -429,11 +454,18 @@ with tab2:
         # Calculate and display performance metrics
         st.header('Performance Metrics')
         performance_metrics = setup_funcs.calculate_performance_metrics(answer_df_merged)
+        
+        answer_df_merged['pred_diff'] = ((answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']).abs() / answer_df_merged['VOL'])
+
+        maxDiff = answer_df_merged['pred_diff'].max() * 100
+        maxDiffID = answer_df_merged['pred_diff'].idxmax()
 
         st.write("Performance Metrics:")
         st.write(f"Overall Percent Difference: {performance_metrics['Overall Percent Difference']:.2f}%")
         st.write(f"Daytime Percent Difference: {performance_metrics['Daytime Percent Difference']:.2f}%")
         st.write(f"Nighttime Percent Difference: {performance_metrics['Nighttime Percent Difference']:.2f}%")
+        st.write(f"Max Percent Difference: {maxDiff:.2f}% for TMC {answer_df_merged.loc[maxDiffID, 'tmc_code_raw']} on {answer_df_merged.loc[maxDiffID, 'measurement_tstamp'].day_name()}, {answer_df_merged.loc[maxDiffID, 'measurement_tstamp']}")
+
 
         # Create a graph showing percentage of data within various thresholds
         st.header('Percentage of Predictions Within Various Thresholds')
@@ -449,25 +481,27 @@ with tab2:
 
         # Create interactive visualization
         st.header('Visualize Predictions vs Measured Values')
-        tmc_code = st.selectbox('Select TMC Code', answer_df_merged['tmc_code'].unique())
+        tmc_code = st.selectbox('Select TMC Code', answer_df_merged['tmc_code_raw'].unique())
 
         # Filter the direction options based on the selected TMC Code
-        available_directions = answer_df_merged[answer_df_merged['tmc_code'] == tmc_code]['DIR'].unique()
+        available_directions = answer_df_merged[answer_df_merged['tmc_code_raw'] == tmc_code]['DIR'].unique()
         direction = st.selectbox('Select Direction', available_directions)
 
-        day_of_week = st.selectbox('Select Day of the Week', answer_df_merged['measurement_tstamp'].dt.day_name().unique())
+        date1 = st.date_input('Select Date to continue:', value="today")
 
-        filtered_df = answer_df_merged[(answer_df_merged['tmc_code'] == tmc_code) &
-                                       (answer_df_merged['DIR'] == direction) &
-                                       (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
+        filtered_df = answer_df_merged[(answer_df_merged['tmc_code_raw'] == tmc_code) & 
+                                    (answer_df_merged['DIR'] == direction) & 
+                                    (answer_df_merged['measurement_tstamp'].dt.year == date1.year) &
+                                    (answer_df_merged['measurement_tstamp'].dt.month == date1.month) &
+                                    (answer_df_merged['measurement_tstamp'].dt.day == date1.day)]
 
         # Aggregate data to get the average traffic volume for each hour
         filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
-        avg_df = filtered_df.groupby('hour').agg({'VOL': 'mean', 'Predicted_VOL': 'mean'}).reset_index()
+        avg_df = filtered_df.groupby('hour', as_index=False).agg({'VOL': 'mean', 'Predicted_VOL': 'mean'})
 
         fig = px.line(avg_df, x='hour', y=['VOL', 'Predicted_VOL'],
-                      labels={'value': 'Traffic Counts', 'variable': 'Legend'},
-                      title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
+                    labels={'value': 'Traffic Counts', 'variable': 'Legend'},
+                    title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {date1}')
         st.plotly_chart(fig)
 
         # Plot stations on a map of the United States
