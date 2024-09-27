@@ -30,26 +30,32 @@ removed_stations = geojoin_df[geojoin_df['STATION_ID'].astype(str).isin(uniqueSt
 filtered_df = geojoin_df[~geojoin_df['STATION_ID'].astype(str).isin(uniqueStations_training)]
 
 # Randomly select 20 station IDs to keep
-unique_stations_remaining = filtered_df['STATION_ID'].unique()
-stations_to_keep = random.sample(list(unique_stations_remaining), min(20, len(unique_stations_remaining)))
+#unique_stations_remaining = filtered_df['STATION_ID'].unique()
+#stations_to_keep = random.sample(list(unique_stations_remaining), min(20, len(unique_stations_remaining)))
 
 # Filter to keep only the selected 20 stations
-final_filtered_df = filtered_df[filtered_df['STATION_ID'].isin(stations_to_keep)]
+#final_filtered_df = filtered_df[filtered_df['STATION_ID'].isin(stations_to_keep)]
 
 # Save the final filtered CSV at the same file path as above but add '_2' to the file name
 output_csv_path = geojoin_csv_path.replace('.csv', '_2.csv')
-final_filtered_df.to_csv(output_csv_path, index=False)
+filtered_df.to_csv(output_csv_path, index=False)
 
 # Print list of stations removed and stations kept
 print("Stations successfully removed from the CSV:")
 for station in removed_stations:
     print(station)
+print(f'number of stations kept: {len(filtered_df)}')
+print(f'number of stations removed: {len(removed_stations)}')
 
+'''
 print("\nStations selected to keep:")
 for station in stations_to_keep:
     print(station)
 
+'''
+
 print(f"\nFiltered CSV saved to: {output_csv_path}")
+
 
 # Create Data Class and Run Joins with new input files
 source_data = module_data.data()
@@ -63,7 +69,7 @@ source_data.npmrds = source_data.npmrds_data()
 source_data.tmc = source_data.tmc_data()
 
 # Set output file paths
-source_data.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_20_22.pkl'
+source_data.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_HOALL_22.pkl'
 
 # Set TMAS file paths
 source_data.tmas.TMAS_DATA_FILE = r'../data/TMAS_Class_Clean_2022.csv'
@@ -76,7 +82,7 @@ source_data.npmrds.NPMRDS_TRUCK_FILE = r'..\data\US_ALL_22\all2022_NPMRDS_TRUCK.
 
 
 # Set TMC data locations (from geojoins)
-source_data.tmc.TMC_STATION_FILE = r'..\data\US_ALL_22\TMC_2022Random_US_Subset_ALL_2022_2.csv'
+source_data.tmc.TMC_STATION_FILE = output_csv_path
 source_data.tmc.TMC_ID_FILE = r'..\data\US_ALL_22\TMC_Identification.csv'
 
 source_data.dataset_year = '2022'

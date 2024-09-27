@@ -227,15 +227,19 @@ def run_joins():
     source_data.OUTPUT_FILE_PATH = st.session_state.get('output_file_path', r'../data/NPMRDS_TMC_TMAS_US_SUBSET_20_22.pkl')
 
     # Set TMAS file paths on the instance
-    tmas_file_path = st.session_state.get('tmas_file', r'../data/TMAS_Class_Clean_2022.csv')
+    tmas_file_path = st.session_state.get('tmas_file', r'nofile')
     source_data.tmas.TMAS_DATA_FILE = tmas_file_path
 
     # If the TMAS data file is a .pkl file, set the TMAS_PKL_FILE
-    if tmas_file_path.endswith('.pkl'):
+    if tmas_file_path.endswith('.pkl') or tmas_file_path == 'nofile':
+        # if no tmas file - then it will be set to 'nofile' which will flag tmas join to not happen
         source_data.tmas.TMAS_PKL_FILE = tmas_file_path
     else:
-        source_data.tmas.TMAS_PKL_FILE = r'../data/TMAS_Class_Clean_2022.pkl'
+        # set output location to be pkl location below and set source location to csv from file picker
+        source_data.tmas.TMAS_PKL_FILE = r'../data/TMAS_Class_Clean_XXXX.pkl'
+        source_data.tmas.TMAS_CSV_FILE = tmas_file_path
         if not os.path.isfile(source_data.tmas.TMAS_PKL_FILE):
+            # this will create
             source_data.tmas.read()
 
     # Set NPMRDS data locations on the instance
@@ -244,11 +248,8 @@ def run_joins():
     source_data.npmrds.NPMRDS_TRUCK_FILE = st.session_state.get('npmrds_truck_file', r'..\data\US_ALL_22\all2022_NPMRDS_TRUCK.csv')
 
     # Set TMC data locations on the instance (from geojoins)
-    source_data.tmc.TMC_STATION_FILE = st.session_state.get('tmc_station_file', r'..\data\US_ALL_22\TMC_2022Random_US_Subset_ALL_2022_2.csv')
+    source_data.tmc.TMC_STATION_FILE = st.session_state.get('tmc_station_file', r'nofile')
     source_data.tmc.TMC_ID_FILE = st.session_state.get('tmc_id_file', r'..\data\US_ALL_22\TMC_Identification.csv')
-
-    source_data.dataset_year = '2022'
-
     source_data.join_and_save()
     st.write("Data joined and saved successfully.")
 
@@ -349,10 +350,10 @@ with tab1:
 
 
 
-# GUI tab #2: Use a Traffic Counts Model
+# GUI tab #2: Use/Test a Traffic Counts Model
 with tab2:
     st.header('Use a Traffic Counts Model')
-    
+
     # Input column(s) and target column GUI buttons (previous single window)
     list_of_model_files = ai.get_model_list('..\models')
     model_filename = st.selectbox(label='Choose a model file', options=list_of_model_files)
@@ -362,41 +363,73 @@ with tab2:
 
     if 'raw_dataset_path' in st.session_state:
         raw_dataset_path = st.session_state['raw_dataset_path']
-        
-        # Columns to use
-        columns = [
-            'tmc_code', 'measurement_tstamp', 'speed_All', 'data_density_All',
-            'data_density_Pass', 'data_density_Truck', 'travel_time_seconds_All', 'start_latitude',
-            'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'aadt', 'urban_code',
-            'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
-        ]
-        
+
+        # Load the dataset
         t_result_df, t_normalized_df, t_ai, t_source_data, t_geo_df = setup(raw_dataset_path)
-        columns.extend(t_source_data.calculated_columns)
 
-        if st.button('Use Model'):
-            st.write('Running Loaded model on test dataset...')
-            answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
-            if answer_df.empty:
-                st.write("Model or data was not properly loaded. Please check your inputs.")
-            else:
-                answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
-                # Save the results
-                base_name = os.path.basename(raw_dataset_path)
-                name, ext = os.path.splitext(base_name)
-                output_file_path = os.path.join('..', 'data', f"{name}_predictions{ext}")
-                answer_df_merged.to_pickle(output_file_path)
-                st.session_state['answer_df_merged'] = answer_df_merged
-                st.write(f"DataFrame saved to {output_file_path}")
+        # Check if the 'VOL' column exists in the dataset
+        if 'VOL' in t_result_df.columns:
+            st.write("The 'VOL' column is present in the dataset. Proceeding with model usage.")
+            
+            # Columns to use
+            columns = [
+                'tmc_code', 'measurement_tstamp', 'speed_All', 'data_density_All',
+                'data_density_Pass', 'data_density_Truck', 'travel_time_seconds_All', 'start_latitude',
+                'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'aadt', 'urban_code',
+                'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
+            ]
+            columns.extend(t_source_data.calculated_columns)
 
-    # Check if answer_df_merged is available in session state
-    if 'answer_df_merged' in st.session_state:
+            if st.button('Use Model'):
+                st.write('Running Loaded model on test dataset...')
+                answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
+                if answer_df.empty:
+                    st.write("Model or data was not properly loaded. Please check your inputs.")
+                else:
+                    answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
+                    # Save the results
+                    base_name = os.path.basename(raw_dataset_path)
+                    name, ext = os.path.splitext(base_name)
+                    output_file_path = os.path.join('..', 'data', f"{name}_predictions{ext}")
+                    answer_df_merged.to_pickle(output_file_path)
+                    st.session_state['answer_df_merged'] = answer_df_merged
+                    st.write(f"DataFrame saved to {output_file_path}")
+
+        else:
+            st.write("The 'VOL' column is not present in the dataset. Generating predictions using the selected model.")
+            
+            # Define columns to use for prediction
+            columns = [
+                'tmc_code', 'measurement_tstamp', 'speed_All', 'data_density_All',
+                'data_density_Pass', 'data_density_Truck', 'travel_time_seconds_All', 'start_latitude',
+                'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'aadt', 'urban_code',
+                'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
+            ]
+            columns.extend(t_source_data.calculated_columns)
+
+            if st.button('Generate Predictions'):
+                st.write('Generating predictions using the selected model...')
+                predictions = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, None)
+                if predictions.empty:
+                    st.write("Failed to generate predictions. Please check your inputs.")
+                else:
+                    predictions_merged = merge_normalized_and_raw_data(t_result_df, predictions)
+                    # Save the results
+                    base_name = os.path.basename(raw_dataset_path)
+                    name, ext = os.path.splitext(base_name)
+                    output_file_path = os.path.join('..', 'data', f"{name}_predictions{ext}")
+                    predictions_merged.to_pickle(output_file_path)
+                    st.session_state['predictions_merged'] = predictions_merged
+                    st.write(f"Predictions saved to {output_file_path}")
+
+    # Check if answer_df_merged is available in session state and contains the 'VOL' column
+    if 'answer_df_merged' in st.session_state and 'VOL' in st.session_state['answer_df_merged'].columns:
         answer_df_merged = st.session_state['answer_df_merged']
 
         # Calculate and display performance metrics
         st.header('Performance Metrics')
         performance_metrics = setup_funcs.calculate_performance_metrics(answer_df_merged)
-        
+
         st.write("Performance Metrics:")
         st.write(f"Overall Percent Difference: {performance_metrics['Overall Percent Difference']:.2f}%")
         st.write(f"Daytime Percent Difference: {performance_metrics['Daytime Percent Difference']:.2f}%")
@@ -404,14 +437,14 @@ with tab2:
 
         # Create a graph showing percentage of data within various thresholds
         st.header('Percentage of Predictions Within Various Thresholds')
-        
+
         thresholds = performance_metrics['Thresholds']
         overall_within_percentages = performance_metrics['Overall Percentage Within']
 
         fig = px.line(x=thresholds, y=overall_within_percentages,
-                    labels={'x': 'Percentage Threshold', 'y': 'Percentage of Predictions Within Threshold (%)'},
-                    title='Overall Percentage of Predictions Within Various Thresholds')
-        
+                      labels={'x': 'Percentage Threshold', 'y': 'Percentage of Predictions Within Threshold (%)'},
+                      title='Overall Percentage of Predictions Within Various Thresholds')
+
         st.plotly_chart(fig)
 
         # Create interactive visualization
@@ -424,17 +457,17 @@ with tab2:
 
         day_of_week = st.selectbox('Select Day of the Week', answer_df_merged['measurement_tstamp'].dt.day_name().unique())
 
-        filtered_df = answer_df_merged[(answer_df_merged['tmc_code'] == tmc_code) & 
-                                    (answer_df_merged['DIR'] == direction) & 
-                                    (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
+        filtered_df = answer_df_merged[(answer_df_merged['tmc_code'] == tmc_code) &
+                                       (answer_df_merged['DIR'] == direction) &
+                                       (answer_df_merged['measurement_tstamp'].dt.day_name() == day_of_week)]
 
         # Aggregate data to get the average traffic volume for each hour
         filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
         avg_df = filtered_df.groupby('hour').agg({'VOL': 'mean', 'Predicted_VOL': 'mean'}).reset_index()
 
         fig = px.line(avg_df, x='hour', y=['VOL', 'Predicted_VOL'],
-                    labels={'value': 'Traffic Counts', 'variable': 'Legend'},
-                    title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
+                      labels={'value': 'Traffic Counts', 'variable': 'Legend'},
+                      title=f'Average Traffic Counts for TMC Code {tmc_code}, Direction {direction} on {day_of_week}')
         st.plotly_chart(fig)
 
         # Plot stations on a map of the United States
@@ -457,6 +490,9 @@ with tab2:
         )
         st.plotly_chart(map_fig)
 
+    elif 'predictions_merged' in st.session_state:
+        predictions_merged = st.session_state['predictions_merged']
+        st.write('Predictions generated and saved. No visualizations are displayed for predictions.')
     else:
         st.write('Please select a raw dataset and run the model to proceed.')
 
