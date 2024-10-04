@@ -203,7 +203,7 @@ class data(object):
                     final_output = pickle.load(open(self.OUTPUT_FILE_PATH, "rb"))
                 else:
                     final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
-                print("Loading cached data...")
+                print("Loading dataset...")
                 self.dataset = final_output
             except Exception as err:
                 print(str(err))

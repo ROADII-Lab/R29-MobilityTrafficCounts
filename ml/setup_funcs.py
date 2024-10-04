@@ -87,32 +87,58 @@ def calculate_performance_metrics(answer_df_merged):
     # Ensure the 'measurement_tstamp' is in datetime format
     answer_df_merged['measurement_tstamp'] = pd.to_datetime(answer_df_merged['measurement_tstamp'])
 
+    # Count zeros in 'VOL' and 'Predicted_VOL' Columns
+    zeros_in_vol = (answer_df_merged['VOL'] == 0).sum()
+    zeros_in_pred_vol = (answer_df_merged['Predicted_VOL'] == 0).sum()
+
+    # Rows where either 'VOL' or 'Predicted_VOL' is zero
+    zeros_in_either = answer_df_merged[(answer_df_merged['VOL'] == 0) | (answer_df_merged['Predicted_VOL'] == 0)].copy()
+    num_rows_with_zeros = len(zeros_in_either)
+
+    # Compute average and median absolute difference for rows with zero in either column
+    zeros_in_either['Absolute_Difference'] = (zeros_in_either['Predicted_VOL'] - zeros_in_either['VOL']).abs()
+    avg_absolute_difference = zeros_in_either['Absolute_Difference'].mean()
+    median_absolute_difference = zeros_in_either['Absolute_Difference'].median()
+
+    # Exclude rows where 'VOL' or 'Predicted_VOL' is zero for percent difference calculations
+    df_non_zero = answer_df_merged[(answer_df_merged['VOL'] != 0) & (answer_df_merged['Predicted_VOL'] != 0)].copy()
+    total_non_zero_rows = len(df_non_zero)
+
     # Calculate absolute percent difference overall
-    overall_diff = ((answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL']).abs() / answer_df_merged['VOL']).mean() * 100
-    
+    df_non_zero['Percent_Difference'] = ((df_non_zero['Predicted_VOL'] - df_non_zero['VOL']).abs() / df_non_zero['VOL']) * 100
+
     # Define daytime and nighttime hours
     day_hours = list(range(7, 19))  # 7 AM to 7 PM
     night_hours = list(range(0, 7)) + list(range(19, 24))  # 7 PM to 7 AM
 
     # Calculate percent difference for daytime
-    day_df = answer_df_merged[answer_df_merged['measurement_tstamp'].dt.hour.isin(day_hours)]
-    day_diff = ((day_df['Predicted_VOL'] - day_df['VOL']).abs() / day_df['VOL']).mean() * 100
+    day_df = df_non_zero[df_non_zero['measurement_tstamp'].dt.hour.isin(day_hours)]
+    day_diff = day_df['Percent_Difference'].mean()
 
     # Calculate percent difference for nighttime
-    night_df = answer_df_merged[answer_df_merged['measurement_tstamp'].dt.hour.isin(night_hours)]
-    night_diff = ((night_df['Predicted_VOL'] - night_df['VOL']).abs() / night_df['VOL']).mean() * 100
+    night_df = df_non_zero[df_non_zero['measurement_tstamp'].dt.hour.isin(night_hours)]
+    night_diff = night_df['Percent_Difference'].mean()
 
     # Calculate percentage within various thresholds for overall
-    thresholds = range(5, 76, 5)  # 5%, 10%, 15%, ... 50%
-    overall_within_percentages = [100*(abs((answer_df_merged['Predicted_VOL'] - answer_df_merged['VOL'])/ answer_df_merged['VOL']) <= (threshold / 100)).sum()/len(answer_df_merged) for threshold in thresholds]
-    
+    thresholds = list(range(5, 76, 5))  # 5%, 10%, ..., 75%
+    overall_within_percentages = []
+    for threshold in thresholds:
+        within_threshold = (df_non_zero['Percent_Difference'] <= threshold).mean() * 100
+        overall_within_percentages.append(within_threshold)
+
     # Compile results into a dictionary
     results = {
-        'Overall Percent Difference': overall_diff,
+        'Overall Percent Difference': df_non_zero['Percent_Difference'].mean(),
         'Daytime Percent Difference': day_diff,
         'Nighttime Percent Difference': night_diff,
-        'Overall Percentage Within': overall_within_percentages,
         'Thresholds': thresholds,
+        'Overall Percentage Within': overall_within_percentages,
+        'Zeros in VOL': zeros_in_vol,
+        'Zeros in Predicted_VOL': zeros_in_pred_vol,
+        'Rows with zeros': num_rows_with_zeros,
+        'Average Absolute Difference (zeros)': avg_absolute_difference,
+        'Median Absolute Difference (zeros)': median_absolute_difference
     }
 
     return results
+
