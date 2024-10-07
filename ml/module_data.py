@@ -46,7 +46,12 @@ class data(object):
         self.always_cache_data = True
         self.OUTPUT_FILE_PATH = r'../data/NPMRDS_TMC_TMAS_US_SUBSET_1000_22.pkl' 
         self.prejoin = r'../data/prejoin.pkl'
-        self.dataset_year = '2022'
+        self.dataset_year = '20xx'
+
+        # Instantiate nested classes as instance attributes
+        self.tmas = self.tmas_data()
+        self.npmrds = self.npmrds_data()
+        self.tmc = self.tmc_data()
 
         # pre-defined features for input into the AI model
         self.features_column_names = ['tmc_code', # traffic monitoring station id, needed for groupby() operations                          
@@ -151,6 +156,7 @@ class data(object):
         if os.path.exists(self.prejoin):
             NPMRDS_TMC = pickle.load(open(self.prejoin, "rb"))
             print("NPMRDS_TMC pkl read")
+            final_output = NPMRDS_TMC
         else:
             # If file doesn't exist, create file with joins
             NPMRDS_Join = self.npmrds.CombineNPMRDS()
@@ -158,19 +164,31 @@ class data(object):
             NPMRDS_TMC = self.TMC_Join(NPMRDS_Join)
             print("TMC AND NPMRDS Joined")
             pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
-
-        final_output = self.TMAS_Join(NPMRDS_TMC)
-        print("Joined with TMAS, now outputting to pkl (larger file)")
+            final_output = NPMRDS_TMC
+        if self.tmas.TMAS_PKL_FILE != 'nofile':
+            # only join with tmas if there is a tmas file
+            final_output = self.TMAS_Join(NPMRDS_TMC)
+            print("Joined with TMAS, now outputting to pkl (larger file)")
         pickle.dump(final_output, open(self.OUTPUT_FILE_PATH, "wb"))
         print("Data output to pkl")
 
         self.dataset = final_output
 
-        print('Outputting into directory of .pkl files')
-        # Change year of dataset here
-        self.split_into_pkl_dir(self.dataset_year)
-        self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/'
-        print(f'directory created at: {self.output_dir}')
+        # Get the minimum and maximum years from the measurement_tstamp column
+        min_year = final_output['measurement_tstamp'].min().year
+        max_year = final_output['measurement_tstamp'].max().year
+
+        # Create the dataset_year string based on the min and max year
+        if min_year == max_year:
+            self.dataset_year = str(min_year)
+        else:
+            self.dataset_year = f"{min_year}{max_year}"
+
+        if self.tmas.TMAS_PKL_FILE != 'nofile':
+            print('Outputting into directory of .pkl files')
+            self.output_dir = os.path.splitext(self.OUTPUT_FILE_PATH)[0] + '/'
+            self.split_into_pkl_dir(self.dataset_year)
+            print(f'directory created at: {self.output_dir}')
 
         return final_output
 
@@ -185,7 +203,7 @@ class data(object):
                     final_output = pickle.load(open(self.OUTPUT_FILE_PATH, "rb"))
                 else:
                     final_output = pd.read_csv(self.OUTPUT_FILE_PATH, dtype={'tmc_code': 'string'}, low_memory=False)
-                print("Loading cached data...")
+                print("Loading dataset...")
                 self.dataset = final_output
             except Exception as err:
                 print(str(err))
@@ -202,11 +220,12 @@ class data(object):
         Tracks progress based on the number of chunks processed.
 
         """
+
         # Set chunksize for memory efficient processing of NPMRDS_TMC
         chunksize = 5000000   # Adjust this value based on your memory constraints and file size
 
         # Read TMAS data .pkl file into a DataFrame
-        TMAS_Data = pickle.load(open(self.tmas_data.TMAS_PKL_FILE, "rb"))
+        TMAS_Data = pickle.load(open(self.tmas.TMAS_PKL_FILE, "rb"))
         NPMRDS_TMC['STATION_ID'] = NPMRDS_TMC['STATION_ID'].astype(str)
         TMAS_Data['STATION_ID'] = TMAS_Data['STATION_ID'].astype(str)
 
@@ -255,23 +274,33 @@ class data(object):
         return NPMRDS_TMC_TMAS
 
     def TMC_Join(self, NPMRDS_Join):
-        ''' Read in NPMRDS Data frame that has All, Pass, and Truck and join with TMC_ID and TMC_Station'''
+        ''' 
+        Read in NPMRDS Data frame that has All, Pass, and Truck and join with TMC_ID and, conditionally, with TMC_Station 
+        '''
         dtype_dict = {
             'STATION_ID': str,
         }
-        # Read in TMC Station file as a csv, rename Tmc column to tmc_code
-        TMC_Station = pd.read_csv(self.tmc.TMC_STATION_FILE, dtype= dtype_dict)
-        TMC_Station = TMC_Station.rename(columns = {'Tmc': 'tmc_code'})
-        
+
         # Read in TMC ID file as a csv, rename tmc column to tmc_code
         TMC_ID = pd.read_csv(self.tmc.TMC_ID_FILE)
-        TMC_ID = TMC_ID.rename(columns = {'tmc': 'tmc_code'})
+        TMC_ID = TMC_ID.rename(columns={'tmc': 'tmc_code'})
 
-        #Join NPMRDS Data frame with TMC Station and TMC ID df on tmc_code
-        NPMRDS_TMC = pd.merge(NPMRDS_Join, TMC_Station,on=['tmc_code'], how = 'inner') 
-        NPMRDS_TMC = pd.merge(NPMRDS_TMC, TMC_ID,on=['tmc_code'], how = 'inner')
+        if self.tmc.TMC_STATION_FILE == 'nofile':
+            # Only merge NPMRDS_Join with TMC_ID if TMC_STATION_FILE is 'nofile'
+            NPMRDS_TMC = pd.merge(NPMRDS_Join, TMC_ID, on=['tmc_code'], how='inner')
+        else:
+            # If TMC_STATION_FILE is not 'nofile', proceed with merging both TMC_Station and TMC_ID
+            # Read in TMC Station file as a csv, rename Tmc column to tmc_code
+            TMC_Station = pd.read_csv(self.tmc.TMC_STATION_FILE, dtype=dtype_dict)
+            TMC_Station = TMC_Station.rename(columns={'Tmc': 'tmc_code'})
+            
+            # Merge NPMRDS DataFrame with TMC Station and TMC ID DataFrames on tmc_code
+            NPMRDS_TMC = pd.merge(NPMRDS_Join, TMC_Station, on=['tmc_code'], how='inner')
+            NPMRDS_TMC = pd.merge(NPMRDS_TMC, TMC_ID, on=['tmc_code'], how='inner')
+
         # UNCOMMENT LINE BELOW IF DOING QAQC CHECKS
-        #pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
+        # pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
+
         return NPMRDS_TMC
 
     # AI-centric functions ----------------------------------------------------------------------------------------------------------------------
@@ -362,6 +391,14 @@ class data(object):
 
     # Apply all normalizations to dataset here by looping through self.norm_functions and calling all (ORDER MATTERS)
     def apply_normalization(self, training=True):
+
+        # Before preparing the dataset, check if 'VOL' exists in the dataset
+        if 'VOL' not in self.dataset.columns:
+            if 'VOL' in self.features_column_names:
+                # Remove 'VOL' from features_column_names if it is there
+                self.features_column_names.remove('VOL')
+
+
         # sort the data i) by road link TMC id; ii) then by timestamp
         self.prepared_dataset = self.dataset[self.features_column_names].copy()
 
