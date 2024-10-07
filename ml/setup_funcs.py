@@ -142,3 +142,21 @@ def calculate_performance_metrics(answer_df_merged):
 
     return results
 
+# Calculate data metrics when 'VOL' column is not present
+def calculate_data_metrics(df):
+    max_volume_time = df.loc[df['Predicted_VOL'].idxmax(), 'measurement_tstamp']
+    morning_peak = df[df['measurement_tstamp'].dt.hour.between(6, 9)]['Predicted_VOL']
+    evening_peak = df[df['measurement_tstamp'].dt.hour.between(16, 19)]['Predicted_VOL']
+    metrics = {
+        'Max Volume Time': max_volume_time,
+        'Average Morning Peak': morning_peak.mean(),
+        'Median Morning Peak': morning_peak.median(),
+        'Std Morning Peak': morning_peak.std(),
+        'Average Evening Peak': evening_peak.mean(),
+        'Median Evening Peak': evening_peak.median(),
+        'Std Evening Peak': evening_peak.std(),
+        'max_volume' : df['Predicted_VOL'].idxmax()
+    }
+    return metrics
+
+

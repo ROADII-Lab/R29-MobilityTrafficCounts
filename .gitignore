@@ -1,5 +1,4 @@
 /data
-/models
 *.pyc
 *.pkl
 *.pt

@@ -163,7 +163,7 @@ class data(object):
             print("NPMRDS Joined")
             NPMRDS_TMC = self.TMC_Join(NPMRDS_Join)
             print("TMC AND NPMRDS Joined")
-            pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb"))
+            #pickle.dump(NPMRDS_TMC, open(self.prejoin, "wb")) used for development
             final_output = NPMRDS_TMC
         if self.tmas.TMAS_PKL_FILE != 'nofile':
             # only join with tmas if there is a tmas file
@@ -281,9 +281,21 @@ class data(object):
             'STATION_ID': str,
         }
 
-        # Read in TMC ID file as a csv, rename tmc column to tmc_code
+        # Read in TMC ID file as a csv, rename tmc column to tmc_code and direction to DIR
         TMC_ID = pd.read_csv(self.tmc.TMC_ID_FILE)
         TMC_ID = TMC_ID.rename(columns={'tmc': 'tmc_code'})
+        TMC_ID = TMC_ID.rename(columns={'direction': 'DIR'})
+
+        direction_mapping = {
+        'NORTHBOUND': 1,
+        'EASTBOUND': 3,
+        'SOUTHBOUND': 5,
+        'WESTBOUND': 7
+        }
+
+        # Apply the mapping to create a new column 'DIR_num'
+        TMC_ID['DIR'] = TMC_ID['DIR'].map(direction_mapping)
+
 
         if self.tmc.TMC_STATION_FILE == 'nofile':
             # Only merge NPMRDS_Join with TMC_ID if TMC_STATION_FILE is 'nofile'
@@ -510,6 +522,8 @@ class data(object):
             NPMRDS_All['measurement_tstamp'] = pd.to_datetime(NPMRDS_All['measurement_tstamp'])
             NPMRDS_Pass['measurement_tstamp'] = pd.to_datetime(NPMRDS_Pass['measurement_tstamp'])
             NPMRDS_Truck['measurement_tstamp'] = pd.to_datetime(NPMRDS_Truck['measurement_tstamp'])
+
+
             
             # Add Suffix to Truck data, not including join columns. Once joined all data will have a suffix
             NPMRDS_All = NPMRDS_All.rename(columns = {c: c + '_All' for c in NPMRDS_All.columns if c not in ['tmc_code', 'measurement_tstamp']})
