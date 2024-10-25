@@ -13,7 +13,7 @@
 9. Acknowledgements
 10. README Version History
 
-
+(UPDATE OUTLINE ONCE README IS FINALIZED @REMI)
 # 1. Project Description
 
 ### ROADII Background
@@ -63,7 +63,7 @@ Figure 4 shows U.S. Census 2020 Population Density by County as an example of th
 *Figure 4. U.S. Census 2020 Population Density by County (Retrieved from https://maps.geo.census.gov/ddmv/map.html)*
 
 
-- **Purpose of the source code and how it relates to the overall goals of the project:** This code base will make it easier and more approachable for transportation agencies to develop a simple neural network model to output historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
+- **Purpose of the source code and how it relates to the overall goals of the project: REVIEW @BILLY** This code base will make it easier and more approachable for transportation agencies to develop a simple neural network model to output historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
 - **Length of the project:** The code base is currently in development. The ROADII team will update this repository as stable builds of the code are created. Development and testing will likely continue through spring 2024. 
 
 
@@ -77,48 +77,45 @@ Requires:
 
 # 3. Usage
 
-### Building the Mobility Traffic Counts Model
+### Building the Mobility Counts Prediction System (MCPS) (WORK IN PROGRESS BUT SOME NAME HERE, REVIEW @BILLY)
 
-The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building the mobility counts model. The following modules are contained therein:
+The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building a MCPS model, using a pre-trained model, and generating a dataset to test model performance. The following modules are contained therein:
 
 - **<main.py>:** Produces a Streamlit GUI that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column
 	* The user’s default web browser (e.g., Google Chrome, Microsoft Edge) opens a Streamlit application with the address "localhost:8501"
-	* Once the web browser opens, the user may click “Open in App” to open a standalone Streamlit application
 - **<use_model.py>:** Uses a cached model file (.pt format) to produce traffic count estimates. Also provides an easier, script based methodology to train a new model version without using the Streamlit application or interface. This is useful for more rapid model iteration
-- **<setup_funcs.py>:** Sets up the various data sources for training the model
+- **<setup_funcs.py>:** Sets up the various data sources for training a model
 - **<module_data.py>:** Reads, formats, and joins the various data sources into a single training dataset. This includes the Traffic Monitoring and Analysis System traffic volume data and the National Performance Measurement Research Data Set speed data
 - **<module_census.py>:** Connects the training data to census information to improve model performance
 - **<module_ai.py>:** Defines the AI/ML training loop, the model architecture, and saves the resulting model for later use. Also provides methods to use a saved or cached model file 
 
-### Testing The Model
+### Starting up the Streamlit Interface
 
-The ROADII team is currently building testing functions for this code and will update the repository when those testing functions are available. 
+The steps to run the streamlit interface
 
-### Executing the Model
+1) Clone the GitHub envionment to a location of your choosing on your machine
+2) In a command prompt application (e.g., Anaconda Prompt), execute the line **--> pip install -r requirements.txt** to ensure all necessary Python packages are up to date and installed in your working environment
+3) Run *main.py* to produce the Streamlit GUI. This can be done by executing the following line in a command prompt application **-->python -m streamlit run main.py** (ensuring that the dependencides in requirements.txt have been installed in a location accessible by this version of Python)
+4) The Streamlit Interface should now open in a browser window (See additional instructions for using the interface below)
 
-The steps to run the model training algorithm are as follows:
+### Using the Streamlit Interface (A lot to add in here @Remi)
 
-1) Download the TMAS data for the analysis year of interest from the following website: [DANA Tool Input Data Installers](https://www.fhwa.dot.gov/environment/air_quality/methodologies/dana/)
-2) Download the NPMRDS data for the analysis region of interest from the following website: [RITIS NPMRDS Analytics Site](https://npmrds.ritis.org/analytics/)
-3) Download the included "TMC_Matches_2021.csv" file
-4) In a command prompt application (e.g., Anaconda Prompt), execute the line **--> pip install -r requirements.txt** to ensure all necessary Python packages are up to date
-5) Create a new folder at the same level as the “ml” folder named “data” and place “NPMRDS_TMC_TMAS_NE_C.csv” in “data”
-6) Create a new folder at the same level as the “ml” folder” named “models”; the models trained by the source code are saved in this folder
-7) Update the data file paths and directory file paths in main.py according to your working directory
-8) Run *main.py* to produce the Streamlit GUI. For instance, execute the line in a command prompt application **--> streamlit run main.py**
-9) After the GUI has loaded successfully, click the “choose source data file” button to select input data
-10) After the GUI populates the “Raw Data” and “Normalized Training Data” viewing panes, use the “choose input columns" drop-down menu to select input data
-11) After selecting the desired input columns for training, use the “choose a target column” drop-down menu to select the data field to predict, the results of which will be saved in a trained AI model
-12) After a model has been trained successfully and saved in “models”; click “use model”
+The following section details the function of each tab within the Streamlit Interface
 
-### Streamlit GUI Visuals
+- "0 - Introduction": Provides the user with background context on required datasets and terminology. Details the workflow of the Streamlit Interface. 
+- "1 - Generate Dataset":
+    * Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
+    * Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
+- "2 - Use a Traffic Counts Model": Allows the user to select a pre-trained AI Model (included with GitHub distribution) or one they've trained using the "Train Model" tab, anf apply that model to a generated dataset to obtain traffic volume predictions.
+    * If a generated dataset with TMAS data was used, there will be perforance metrics generated in the "Results" tab comparing the predicted values to the measured values from the TMAS data.
+- "3 - Results": View performance metrics comparing actual and predicted traffic volumes or view predictions for roads with no measured traffic volumes. Explore an interactive map of station locations from generated dataset.
+- "4 - Train Model": Train a new model using your generated dataset with the ability to select custom input features and target variable.
+- "5 - About": User views links for helpful information related to this source code e.g., Points of Contacts, GitHub link, and README download link
 
-The following figures show in-development screenshots from the Streamlit GUI. The Streamlit GUI provides a main banner at the top, along with four (4) tabs that may be toggled by the user which are:
 
-- "Train Model": User loads source data and trains an AI model on this tab
-- "Test Model": User loads previously trained AI models and tests that AI model. User may perform tasks on this tab as long as they have previously trained AI models. If the user has not trained any AI models or no models are saved in “..\models”; then they should train models in the “Train Model” tab
-- "Results": User views a U.S. map data visualization that shows the NHS road segments covered by input data, the NHS road segments covered by AI prediction, and mobility attributes (e.g., traffic counts, speed) on NHS road segments
-- "About": User views links for helpful information related to this source code e.g., Points of Contacts, GitHub link, and README download link
+ALL GUI EXAMPLES BELOW NEED TO BE UPDATED WITH THE EXCEPTION OF THE MODEL TRAINING FIGURES (EPOCH VS LOSS, TERMINAL GRAPHIC FIGURES 9,10,11,12, AND TEXT OUTPUT FROM TERMINAL @REMI - LEAVING THE BAD ONES IN AS A EXAMPLE OF HOW TO LOAD IN IMAGES FROM THE RESOURCES FOLDER)
+
+(EVERYTHING BEFORE THIS NOTE IS EITHER GOOD OR JUST NEEDS ADDITIONAL CONTENT BUT DOESN'T NEED TO BE REMOVED, AFTER THIS LINE THERE IS A LOT OF OUTDATED MATERIAL SPECIFICALLY THE DOCUMENTATION OF THE INTERFACE THAT HAS SINCE BEEN UPDATED)
 
 Figure 5 shows the Streamlit GUI’s main banner at the top, and the user’s ability to choose a source data file as the input dataset. The main banner shows the current datetime and current build; the ROADII team may add other data in future versions. If the user clicks on the “Choose source data file” button, then a dialog box opens, and the user may explore files and select a source data file.
 

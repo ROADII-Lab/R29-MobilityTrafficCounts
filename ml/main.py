@@ -26,7 +26,7 @@ from streamlit_folium import st_folium
 import time
 import warnings
 import wx
-import csv  # Added for CSV writing
+import csv 
 
 # Import ROADII team's modules
 import module_ai
@@ -34,6 +34,8 @@ import module_data
 import setup_funcs
 from load_shapes import load_shape_csv  # Ensure this function is correctly defined in load_shapes.py
 
+# Enable Wide Mode
+st.set_page_config(layout="wide")
 # Suppress all warnings
 warnings.filterwarnings("ignore")
 
@@ -391,7 +393,7 @@ with tab0:
     ***Workflow***
     1. **Generate Dataset:**
        - Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
-       - Generte a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
+       - Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
 
 
     2. **Use a Traffic Counts Model:**
@@ -776,7 +778,6 @@ with tab3:
             st.error(f"Error loading the uploaded file: {e}")
 
     df_to_display = None
-    performance_metrics = None
 
     if 'answer_df_merged' in st.session_state:
         df_to_display = st.session_state['answer_df_merged']
@@ -785,95 +786,149 @@ with tab3:
         df_to_display = st.session_state['uploaded_df']
 
     if df_to_display is not None and not df_to_display.empty:
-        tmc_codes, dates = get_unique_tmc_codes_and_dates(df_to_display)
-        
-        # Create dropdowns for TMC codes and dates
-        selected_tmc = st.selectbox('Select TMC Code', tmc_codes)
-        selected_date = st.selectbox('Select Date', dates)
-
-        # Filter the data for the selected TMC code and date
-        filtered_df = filter_data_by_tmc_and_date(df_to_display, selected_tmc, selected_date)
-
-        if filtered_df.empty:
-            st.write("No data available for the selected TMC code and date.")
+        # Calculate overall performance metrics for the entire dataset
+        if 'VOL' in df_to_display.columns:
+            overall_performance_metrics = setup_funcs.calculate_performance_metrics(df_to_display)
         else:
-            # Display the direction (assumed to be unique for each TMC code)
-            direction = filtered_df['DIR'].iloc[0]
-            st.write(f"Direction: {direction}")
+            overall_performance_metrics = setup_funcs.calculate_data_metrics(df_to_display)
+
+        # Display overall performance metrics
+        st.header('Overall Performance Metrics')
+        if 'VOL' in df_to_display.columns:
+            st.write(f"**Overall Percent Difference:** {overall_performance_metrics['Overall Percent Difference']:.2f}%")
+            st.write(f"**Daytime Percent Difference (7 AM - 7 PM):** {overall_performance_metrics['Daytime Percent Difference']:.2f}%")
+            st.write(f"**Nighttime Percent Difference (7 PM - 7 AM):** {overall_performance_metrics['Nighttime Percent Difference']:.2f}%")
+            st.write(f"**Number of zeros in 'VOL':** {overall_performance_metrics['Zeros in VOL']}")
+            st.write(f"**Number of zeros in 'Predicted_VOL':** {overall_performance_metrics['Zeros in Predicted_VOL']}")
+            st.write(f"**Number of rows with zero in either 'VOL' or 'Predicted_VOL':** {overall_performance_metrics['Rows with zeros']}")
+            st.write(f"**Average absolute difference for zeros:** {overall_performance_metrics['Average Absolute Difference (zeros)']:.2f}")
+            st.write(f"**Median absolute difference for zeros:** {overall_performance_metrics['Median Absolute Difference (zeros)']:.2f}")
             
-            # Prepare the data for visualization
-            filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
-
-            if 'VOL' in df_to_display.columns:
-                # Case: 'VOL' column is present
-                st.write("Comparing 'VOL' and 'Predicted_VOL'")
-                avg_df = filtered_df.groupby('hour', as_index=False).agg({'VOL': 'mean', 'Predicted_VOL': 'mean'})
-                fig = px.line(
-                    avg_df, 
-                    x='hour', 
-                    y=['VOL', 'Predicted_VOL'],
-                    labels={'value': 'Traffic Counts', 'variable': 'Legend', 'hour': 'Hour of Day'},
-                    title=f'Average Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+            # Time of maximum difference and TMC code
+            max_diff_index = (df_to_display['VOL'] - df_to_display['Predicted_VOL']).abs().idxmax()
+            max_diff_row = df_to_display.loc[max_diff_index]
+            st.write(f"**Time of Maximum Difference:** {max_diff_row['measurement_tstamp']}")
+            st.write(f"**TMC Code of Maximum Difference:** {max_diff_row['tmc_code']}")
+            
+            # Percentage within Error Thresholds plot
+            if 'Thresholds' in overall_performance_metrics and 'Overall Percentage Within' in overall_performance_metrics:
+                st.header('Percentage Within Error Thresholds (Excluding Zeros)')
+                fig_overall = px.line(
+                    x=overall_performance_metrics['Thresholds'], 
+                    y=overall_performance_metrics['Overall Percentage Within'],
+                    labels={'x': 'Error Threshold (%)', 'y': 'Percentage of Data Points Within Threshold (%)'},
+                    title='Percentage of Data Points Within Error Thresholds (Excluding Zeros)',
                     markers=True
                 )
-                st.plotly_chart(fig)
+                # Use container width
+                st.plotly_chart(fig_overall, use_container_width=True)
+        else:
+            st.write(f"**Average Morning (6 AM - 9 AM):** {overall_performance_metrics['Average Morning Peak']:.2f}")
+            st.write(f"**Average Evening  (4 PM - 7 PM):** {overall_performance_metrics['Average Evening Peak']:.2f}")
+            # Include any other overall metrics you wish to display
 
-                # Performance metrics
-                performance_metrics = setup_funcs.calculate_performance_metrics(filtered_df)
+        st.header('Visualize Predictions')
 
-                if performance_metrics:
-                    st.header('Performance Metrics')
-                    st.write(f"**Overall Percent Difference:** {performance_metrics['Overall Percent Difference']:.2f}%")
-                    st.write(f"**Daytime Percent Difference:** {performance_metrics['Daytime Percent Difference']:.2f}%")
-                    st.write(f"**Nighttime Percent Difference:** {performance_metrics['Nighttime Percent Difference']:.2f}%")
-                    st.write(f"**Number of zeros in 'VOL':** {performance_metrics['Zeros in VOL']}")
-                    st.write(f"**Number of zeros in 'Predicted_VOL':** {performance_metrics['Zeros in Predicted_VOL']}")
-                    st.write(f"**Number of rows with zero in either 'VOL' or 'Predicted_VOL':** {performance_metrics['Rows with zeros']}")
-                    st.write(f"**Average absolute difference for zeros:** {performance_metrics['Average Absolute Difference (zeros)']:.2f}")
-                    st.write(f"**Median absolute difference for zeros:** {performance_metrics['Median Absolute Difference (zeros)']:.2f}")
+        # Extract unique TMC codes for dropdown
+        @st.cache_data
+        def get_unique_tmc_codes(df):
+            tmc_codes = df['tmc_code'].unique()
+            return sorted(tmc_codes)
 
-                    if 'Thresholds' in performance_metrics and 'Overall Percentage Within' in performance_metrics:
-                        st.header('Percentage Within Error Thresholds (Excluding Zeros)')
-                        fig2 = px.line(
-                            x=performance_metrics['Thresholds'], 
-                            y=performance_metrics['Overall Percentage Within'],
-                            labels={'x': 'Error Threshold (%)', 'y': 'Percentage of Data Points Within Threshold (%)'},
-                            title='Percentage of Data Points Within Error Thresholds (Excluding Zeros)',
-                            markers=True
-                        )
-                        st.plotly_chart(fig2)
+        # Cache function to get dates for a given TMC code
+        @st.cache_data
+        def get_dates_for_tmc(df, selected_tmc):
+            dates = df[df['tmc_code'] == selected_tmc]['measurement_tstamp'].dt.date.unique()
+            return sorted(dates)
+
+        # Create dropdown for TMC codes
+        tmc_codes = get_unique_tmc_codes(df_to_display)
+        selected_tmc = st.selectbox('Select TMC Code', tmc_codes)
+
+        # After TMC code is selected, get available dates
+        if selected_tmc:
+            dates = get_dates_for_tmc(df_to_display, selected_tmc)
+            if dates:
+                selected_date = st.selectbox('Select Date', dates)
             else:
-                # Case: No 'VOL' column present
-                st.write("Displaying Predicted Traffic Counts")
-                avg_df = filtered_df.groupby('hour', as_index=False).agg({'Predicted_VOL': 'mean'})
-                fig = px.line(
-                    avg_df, 
-                    x='hour', 
-                    y='Predicted_VOL',
-                    labels={'Predicted_VOL': 'Predicted Traffic Counts', 'hour': 'Hour of Day'},
-                    title=f'Average Predicted Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
-                    markers=True
-                )
-                st.plotly_chart(fig)
+                st.write("No dates available for the selected TMC code.")
+                selected_date = None
+        else:
+            selected_date = None
 
-                # Calculate and display data metrics
-                data_metrics = setup_funcs.calculate_data_metrics(filtered_df)
-                if data_metrics:
-                    st.header(f'Metrics for {selected_date}')
-                    st.write(f"**Max Volume Time:** {data_metrics['Max Volume Time']}, **Volume**: {data_metrics['max_volume']}")
-                    st.write(f"**Average Morning (6am-9am):** {data_metrics['Average Morning Peak']:.2f}")
-                    st.write(f"**Average Evening (4pm-7pm):** {data_metrics['Average Evening Peak']:.2f}")
+        # Proceed only if a date is selected
+        if selected_date is not None:
+            # Filter the data for the selected TMC code and date
+            filtered_df = filter_data_by_tmc_and_date(df_to_display, selected_tmc, selected_date)
 
+            if filtered_df.empty:
+                st.write("No data available for the selected TMC code and date.")
+            else:
+                # Display the direction (assumed to be unique for each TMC code)
+                direction = filtered_df['DIR'].iloc[0]
+                st.write(f"Direction: {direction}")
+                
+                # Prepare the data for visualization
+                filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
 
-    # Generate and display the folium map only if it hasn't been created yet
-    if df_to_display is not None and not df_to_display.empty:
-        if 'station_map' not in st.session_state:
-            st.session_state['station_map'] = create_folium_station_map(df_to_display)
+                if 'VOL' in df_to_display.columns:
+                    # Case: 'VOL' column is present
+                    st.write("Comparing 'VOL' and 'Predicted_VOL'")
+                    avg_df = filtered_df.groupby('hour', as_index=False).agg({'VOL': 'mean', 'Predicted_VOL': 'mean'})
+                    fig = px.line(
+                        avg_df, 
+                        x='hour', 
+                        y=['VOL', 'Predicted_VOL'],
+                        labels={'value': 'Traffic Counts', 'variable': 'Legend', 'hour': 'Hour of Day'},
+                        title=f'Average Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+                        markers=True
+                    )
+                    # Use container width
+                    st.plotly_chart(fig, use_container_width=True)
 
-        st.header('Map of Stations in dataset')
-        st_folium(st.session_state['station_map'], width=700, height=500)
-    else:
-        st.write("No data available to display the map.")
+                    # Performance metrics for the selected day
+                    performance_metrics = setup_funcs.calculate_performance_metrics(filtered_df)
+
+                    if performance_metrics:
+                        st.header(f'Performance Metrics for {selected_date}')
+                        st.write(f"**Overall Percent Difference:** {performance_metrics['Overall Percent Difference']:.2f}%")
+                        st.write(f"**Daytime Percent Difference (7 AM - 7 PM):** {performance_metrics['Daytime Percent Difference']:.2f}%")
+                        st.write(f"**Nighttime Percent Difference (7 PM - 7 AM):** {performance_metrics['Nighttime Percent Difference']:.2f}%")
+                else:
+                    # Case: No 'VOL' column present
+                    st.write("Displaying Predicted Traffic Counts")
+                    avg_df = filtered_df.groupby('hour', as_index=False).agg({'Predicted_VOL': 'mean'})
+                    fig = px.line(
+                        avg_df, 
+                        x='hour', 
+                        y='Predicted_VOL',
+                        labels={'Predicted_VOL': 'Predicted Traffic Counts', 'hour': 'Hour of Day'},
+                        title=f'Average Predicted Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+                        markers=True
+                    )
+                    # Use container width
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Data metrics for the selected day
+                    data_metrics = setup_funcs.calculate_data_metrics(filtered_df)
+                    if data_metrics:
+                        st.header(f'Metrics for {selected_date}')
+                        st.write(f"**Average Morning (6 AM - 9 AM):** {data_metrics['Average Morning Peak']:.2f}")
+                        st.write(f"**Average Evening (4 PM - 7 PM):** {data_metrics['Average Evening Peak']:.2f}")
+
+        else:
+            st.write("Please select a date to proceed.")
+
+        # Generate and display the folium map
+        if df_to_display is not None and not df_to_display.empty:
+            if 'station_map' not in st.session_state:
+                st.session_state['station_map'] = create_folium_station_map(df_to_display)
+
+            st.header('Map of Stations in dataset')
+            # Adjust the width to use the full container width
+            st_folium(st.session_state['station_map'], width='100%', height=500)
+        else:
+            st.write("No data available to display the map.")
 
 # GUI tab #4: Train Model
 with tab4:
