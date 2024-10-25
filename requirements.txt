@@ -24,3 +24,4 @@ streamlit
 streamlit-folium
 torch
 wxPython
+visualtorch
