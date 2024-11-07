@@ -36,22 +36,59 @@ from load_shapes import load_shape_csv  # Ensure this function is correctly defi
 
 # Enable Wide Mode
 st.set_page_config(layout="wide")
+
 # Suppress all warnings
 warnings.filterwarnings("ignore")
 
 # Suppress specific Streamlit warnings by setting the logging level to ERROR
 logging.getLogger('streamlit').setLevel(logging.ERROR)
 
-# GUI home page
-st.title('Mobility Traffic Counts AI Prediction')
+# Function to encode image to base64
+def get_base64_image(image_path):
+    with open(image_path, 'rb') as img_file:
+        b64_string = base64.b64encode(img_file.read()).decode()
+    return b64_string
 
-# Display current/system datetime
-now = dt.datetime.now(pytz.timezone('UTC'))
-date_time = now.strftime('%m/%d/%Y, %H:%M:%S')
-st.write('Current Datetime is ', date_time, ' UTC')
+# Load and encode your logo image
+logo_path = '..\\resources\\dot_logo.png'
+logo_path2 = '..\\resources\\headerlogo.png'
+logo_base64 = get_base64_image(logo_path)
 
-# Display software build/version - placeholder
-st.write('Current Build is v1.0')
+# Inject CSS with the background image applied to .stApp
+st.markdown(
+    f"""
+    <style>
+    .stApp {{
+        background-image: linear-gradient(rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0.97)), url("data:image/png;base64,{logo_base64}");
+        background-repeat: repeat;
+        background-size: 1000px 1000px; 
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Create a two-column layout for the header
+col1, col2 = st.columns([3, 2])
+
+with col1:
+    # Display the title and current datetime
+    st.title('Mobility Traffic Counts AI Prediction')
+    
+    # Display current/system datetime
+    now = dt.datetime.now(pytz.timezone('UTC'))
+    date_time = now.strftime('%m/%d/%Y, %H:%M:%S')
+    st.write('Program Start Time: ', date_time, ' UTC')
+    
+    # Display software build/version - placeholder
+    st.write('Current Build is v1.0')
+
+with col2:
+    # Load and display the logo image in the header
+    from PIL import Image
+    logo_image = Image.open(logo_path2)
+    st.image(logo_image,use_column_width=True)
+
 
 # Function to find string index in a list
 def find_string_index(alist, search_string):
@@ -356,30 +393,55 @@ def merge_normalized_and_raw_data(raw_df, normalized_df):
 
 # Define Tabs in the desired order with numbering
 tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    '0. 0 - Introduction',
-    '1. 1 - Generate Dataset',
-    '2. 2 - Use a Traffic Counts Model',
-    '3. 3 - Results',
-    '4. 4 - Train Model',
-    '5. 5 - About'
+    '0. **0 - Introduction**',
+    '1. **1 - Generate Dataset**',
+    '2. **2 - Use a Traffic Counts Model**',
+    '3. **3 - Results**',
+    '4. **4 - Train Model**',
+    '5. **5 - About**'
 ])
+
+st.markdown("""
+<style>
+
+	.stTabs [data-baseweb="tab-list"] {
+		gap: 7px;
+    }
+
+	.stTabs [data-baseweb="tab"] {
+		height: 30px;
+        white-space: pre-line;
+		background-color: #E2EAF4;
+		border-radius: 5px 5px 5px 5px;
+		gap: 1px;
+		padding-top: 1px;
+		padding-bottom: 20px;
+        padding-right: 5px;
+        padding-left: 5px;
+    }
+
+	.stTabs [aria-selected="true"] {
+  		background-color: #FFFFFF;
+	}
+
+</style>""", unsafe_allow_html=True)
 
 # GUI tab #0: Introduction
 with tab0:
-    st.header('Introduction')
+    st.subheader("Welcome to the Mobility Traffic Counts AI Prediction Tool!")
     st.write("""
-    **Welcome to the Mobility Traffic Counts AI Prediction Tool!**
-
     ***Overview***
 
     The Mobility Traffic Counts code base geographically matches traffic counting station data with probe-collected speed data on the U.S. National Highway System (NHS), to produce training datasets for roadway traffic volume prediction across the entire road system. The code provides a Graphical User Interface (GUI) to easily load input data, select input and target columns, and train a model using basic AI neural network methods.
     
     This code base will make it easier and more approachable for transportation agencies to develop a neural network model to output estimates of historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
 
-    This application is designed to assist in predicting traffic counts using advanced AI models. Below is an overview of the workflow:
+    This application is designed to assist in predicting traffic counts using advanced AI models. Below is a description of background terminalogy and an overview of the workflow:
+    """)
+    st.markdown('---')
+    st.subheader("Definitions")
 
-    
-    ***Definitions***
+    st.write("""
 
     **Highway Performance Monitoring System (HPMS):** 
     A national level highway information system that includes information on the extent, condition, performance, use, and operating characteristics of the nation’s highways. Notably, HPMS includes traffic data reporting, AADT estimates at a segment level, vehicle miles traveled, road type, and urban and rural distinctions.
@@ -389,8 +451,10 @@ with tab0:
  
     **National Performance Management Research Data Set (NPMRDS):** 
     A vehicle probe-based travel time data set acquired by the FHWA. The dataset is an archived speed, travel time, and location referencing dataset. It includes hourly speeds and travel times at 5-minute intervals for passenger vehicles, trucks, and a combination of the two. NPMRDS also includes traffic counts as an average for any day of the week for the year.
-
-    ***Workflow***
+    """)
+    st.markdown('---')
+    st.subheader("Workflow")
+    st.write("""
     1. **Generate Dataset:**
        - Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
        - Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
@@ -410,7 +474,9 @@ with tab0:
 
     5. **About:**
        - Access additional resources, documentation, and contact information.
-
+    """)
+    st.markdown('---')
+    st.write("""
     **Get Started:**
     Navigate through the tabs to generate your dataset, apply AI models, view results, and train new models. Ensure that all required files are available and correctly formatted before proceeding to each step.
 
@@ -653,15 +719,40 @@ with tab2:
     st.header('Use a Traffic Counts Model')
     
 # Input column(s) and target column GUI buttons (previous single window)
-    folder_picker('Choose Model Storage Location', 'model_storage_path', button_key='model_storage_path_picker')
+
+    # Set default model storage path if not already set
+    if 'model_storage_path' not in st.session_state:
+        st.session_state['model_storage_path'] = '..\\models\\'
+
+    # Create columns for layout
+    col1, col2 = st.columns([4, 1])
+
+    with col1:
+        st.write(f"Current Model Storage Location: {st.session_state['model_storage_path']}")
+
+    with col2:
+        # Smaller button to change model storage location
+        if st.button('Change Model Lookup Location', key='change_model_storage_location'):
+            # Use wxPython to select a folder
+            app = wx.App(False)
+            dialog = wx.DirDialog(None, 'Select Model Storage Location:', style=wx.DD_DEFAULT_STYLE)
+            if dialog.ShowModal() == wx.ID_OK:
+                dir_path = dialog.GetPath()
+                st.session_state['model_storage_path'] = dir_path
+                st.write(f"Selected Model Storage Location: {dir_path}")
+            else:
+                st.write("No Model Storage Location selected.")
+            dialog.Destroy()
+
+    # Get the list of model files from the current model storage path
     ai = module_ai.ai()
-    if 'model_storage_path' in st.session_state:
-        list_of_model_files = ai.get_model_list(st.session_state['model_storage_path'])
-    else: list_of_model_files = []
-    model_filename = st.selectbox(label='Choose a model file', options=list_of_model_files)
+    list_of_model_files = ai.get_model_list(st.session_state['model_storage_path'])
+
+    # Display the selectbox for model files
+    model_filename = st.selectbox(label='Choose a model file', options=list_of_model_files, key='model_filename_selectbox')
 
     # File picker for generated dataset path
-    file_picker('Choose Generated Dataset (.pkl)', 'raw_dataset_path', button_key='raw_dataset_picker_tab2', wildcard="Pickle files (*.pkl)|*.pkl")
+    file_picker('Choose Generated Dataset from Step 1 (.pkl)', 'raw_dataset_path', button_key='raw_dataset_picker_tab2', wildcard="Pickle files (*.pkl)|*.pkl")
 
     if 'raw_dataset_path' in st.session_state:
         raw_dataset_path = st.session_state['raw_dataset_path']
@@ -792,24 +883,51 @@ with tab3:
         else:
             overall_performance_metrics = setup_funcs.calculate_data_metrics(df_to_display)
 
-        # Display overall performance metrics
+        # Display overall performance metrics in a table
         st.header('Overall Performance Metrics')
+
         if 'VOL' in df_to_display.columns:
-            st.write(f"**Overall Percent Difference:** {overall_performance_metrics['Overall Percent Difference']:.2f}%")
-            st.write(f"**Daytime Percent Difference (7 AM - 7 PM):** {overall_performance_metrics['Daytime Percent Difference']:.2f}%")
-            st.write(f"**Nighttime Percent Difference (7 PM - 7 AM):** {overall_performance_metrics['Nighttime Percent Difference']:.2f}%")
-            st.write(f"**Number of zeros in 'VOL':** {overall_performance_metrics['Zeros in VOL']}")
-            st.write(f"**Number of zeros in 'Predicted_VOL':** {overall_performance_metrics['Zeros in Predicted_VOL']}")
-            st.write(f"**Number of rows with zero in either 'VOL' or 'Predicted_VOL':** {overall_performance_metrics['Rows with zeros']}")
-            st.write(f"**Average absolute difference for zeros:** {overall_performance_metrics['Average Absolute Difference (zeros)']:.2f}")
-            st.write(f"**Median absolute difference for zeros:** {overall_performance_metrics['Median Absolute Difference (zeros)']:.2f}")
-            
             # Time of maximum difference and TMC code
             max_diff_index = (df_to_display['VOL'] - df_to_display['Predicted_VOL']).abs().idxmax()
             max_diff_row = df_to_display.loc[max_diff_index]
-            st.write(f"**Time of Maximum Difference:** {max_diff_row['measurement_tstamp']}")
-            st.write(f"**TMC Code of Maximum Difference:** {max_diff_row['tmc_code']}")
             
+            # Collect metrics into a dictionary
+            metrics_dict = {
+                'Metric': [
+                    'Overall Percent Difference',
+                    'Daytime Percent Difference (7 AM - 7 PM)',
+                    'Nighttime Percent Difference (7 PM - 7 AM)',
+                    'Number of zeros in VOL',
+                    'Number of zeros in Predicted_VOL',
+                    'Number of rows with zero in either VOL or Predicted_VOL',
+                    'Average Absolute Difference for zeros',
+                    'Median Absolute Difference for zeros',
+                    'Time of Maximum Difference',
+                    'TMC Code of Maximum Difference'
+                ],
+                'Value': [
+                    f"{overall_performance_metrics['Overall Percent Difference']:.2f}%",
+                    f"{overall_performance_metrics['Daytime Percent Difference']:.2f}%",
+                    f"{overall_performance_metrics['Nighttime Percent Difference']:.2f}%",
+                    overall_performance_metrics['Zeros in VOL'],
+                    overall_performance_metrics['Zeros in Predicted_VOL'],
+                    overall_performance_metrics['Rows with zeros'],
+                    f"{overall_performance_metrics['Average Absolute Difference (zeros)']:.2f}",
+                    f"{overall_performance_metrics['Median Absolute Difference (zeros)']:.2f}",
+                    max_diff_row['measurement_tstamp'],
+                    max_diff_row['tmc_code']
+                ]
+            }
+
+            # Convert to DataFrame and reset index
+            metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
+
+            # Display the metrics DataFrame
+            st.table(
+                metrics_df.style
+                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+            )
+
             # Percentage within Error Thresholds plot
             if 'Thresholds' in overall_performance_metrics and 'Overall Percentage Within' in overall_performance_metrics:
                 st.header('Percentage Within Error Thresholds (Excluding Zeros)')
@@ -823,9 +941,26 @@ with tab3:
                 # Use container width
                 st.plotly_chart(fig_overall, use_container_width=True)
         else:
-            st.write(f"**Average Morning (6 AM - 9 AM):** {overall_performance_metrics['Average Morning Peak']:.2f}")
-            st.write(f"**Average Evening  (4 PM - 7 PM):** {overall_performance_metrics['Average Evening Peak']:.2f}")
-            # Include any other overall metrics you wish to display
+            # Collect metrics into a dictionary
+            metrics_dict = {
+                'Metric': [
+                    'Average Morning Peak (6 AM - 9 AM)',
+                    'Average Evening Peak (4 PM - 7 PM)'
+                ],
+                'Value': [
+                    f"{overall_performance_metrics['Average Morning Peak']:.2f}",
+                    f"{overall_performance_metrics['Average Evening Peak']:.2f}"
+                ]
+            }
+
+            # Convert to DataFrame and reset index
+            metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
+
+            # Display the metrics DataFrame
+            st.table(
+                metrics_df.style
+                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+            )
 
         st.header('Visualize Predictions')
 
@@ -866,7 +1001,7 @@ with tab3:
             else:
                 # Display the direction (assumed to be unique for each TMC code)
                 direction = filtered_df['DIR'].iloc[0]
-                st.write(f"Direction: {direction}")
+                st.write(f"**Direction:** {direction}")
                 
                 # Prepare the data for visualization
                 filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
@@ -891,9 +1026,28 @@ with tab3:
 
                     if performance_metrics:
                         st.header(f'Performance Metrics for {selected_date}')
-                        st.write(f"**Overall Percent Difference:** {performance_metrics['Overall Percent Difference']:.2f}%")
-                        st.write(f"**Daytime Percent Difference (7 AM - 7 PM):** {performance_metrics['Daytime Percent Difference']:.2f}%")
-                        st.write(f"**Nighttime Percent Difference (7 PM - 7 AM):** {performance_metrics['Nighttime Percent Difference']:.2f}%")
+                        # Collect daily metrics into a dictionary
+                        daily_metrics_dict = {
+                            'Metric': [
+                                'Overall Percent Difference',
+                                'Daytime Percent Difference (7 AM - 7 PM)',
+                                'Nighttime Percent Difference (7 PM - 7 AM)'
+                            ],
+                            'Value': [
+                                f"{performance_metrics['Overall Percent Difference']:.2f}%",
+                                f"{performance_metrics['Daytime Percent Difference']:.2f}%",
+                                f"{performance_metrics['Nighttime Percent Difference']:.2f}%"
+                            ]
+                        }
+
+                        # Convert to DataFrame and reset index
+                        daily_metrics_df = pd.DataFrame(daily_metrics_dict).reset_index(drop=True)
+
+                        # Display the daily metrics DataFrame
+                        st.table(
+                            daily_metrics_df.style
+                            .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                        )
                 else:
                     # Case: No 'VOL' column present
                     st.write("Displaying Predicted Traffic Counts")
@@ -913,8 +1067,26 @@ with tab3:
                     data_metrics = setup_funcs.calculate_data_metrics(filtered_df)
                     if data_metrics:
                         st.header(f'Metrics for {selected_date}')
-                        st.write(f"**Average Morning (6 AM - 9 AM):** {data_metrics['Average Morning Peak']:.2f}")
-                        st.write(f"**Average Evening (4 PM - 7 PM):** {data_metrics['Average Evening Peak']:.2f}")
+                        # Collect data metrics into a dictionary
+                        data_metrics_dict = {
+                            'Metric': [
+                                'Average Morning Peak (6 AM - 9 AM)',
+                                'Average Evening Peak (4 PM - 7 PM)'
+                            ],
+                            'Value': [
+                                f"{data_metrics['Average Morning Peak']:.2f}",
+                                f"{data_metrics['Average Evening Peak']:.2f}"
+                            ]
+                        }
+
+                        # Convert to DataFrame and reset index
+                        data_metrics_df = pd.DataFrame(data_metrics_dict).reset_index(drop=True)
+
+                        # Display the data metrics DataFrame
+                        st.table(
+                            data_metrics_df.style
+                            .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                        )
 
         else:
             st.write("Please select a date to proceed.")
@@ -924,7 +1096,7 @@ with tab3:
             if 'station_map' not in st.session_state:
                 st.session_state['station_map'] = create_folium_station_map(df_to_display)
 
-            st.header('Map of Stations in dataset')
+            st.header('Map of Stations in Dataset')
             # Adjust the width to use the full container width
             st_folium(st.session_state['station_map'], width='100%', height=500)
         else:
@@ -1027,6 +1199,6 @@ with tab4:
 with tab5:
     st.header('About')
     
-    st.write('Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.')
-    st.write('Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf).')
-    st.write('Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov.')
+    st.write('**Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.**')
+    st.write('**Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf).**')
+    st.write('**Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov.**')
