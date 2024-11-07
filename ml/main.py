@@ -436,7 +436,7 @@ with tab0:
     
     This code base will make it easier and more approachable for transportation agencies to develop a neural network model to output estimates of historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
 
-    This application is designed to assist in predicting traffic counts using advanced AI models. Below is a description of background terminalogy and an overview of the workflow:
+    This application is designed to assist in predicting traffic counts using advanced AI models. Below is a description of background terminology and an overview of the workflow:
     """)
     st.markdown('---')
     st.subheader("Definitions")
