@@ -1,4 +1,4 @@
-# README: U.S. DOT ROADII -- Mobility Traffic Counts AI Prediction
+# README: U.S. DOT ROADII -- Traffic and Mobility Counts Prediction for Transportation Planning
 1. Project Description
 2. Prerequisites
 3. Usage
@@ -28,9 +28,9 @@ ROADII’s vision is to expand U.S. transportation agencies’ (regional, state,
 
 The processes and tools developed under ROADII will enable data scientists, researchers, and data providers to test and share new transportation-related AI algorithms; to develop high-value and well-documented AI training datasets; to reduce the barriers of applying AI approaches to transportation data; and to train future transportation researchers.
 
-For more information, visit ITS JPO [here](https://www.its.dot.gov/).
+For more information, visit ITS JPO's website [here](https://www.its.dot.gov/).
 
-### ROADII Use Case 29 - Mobility Traffic Counts
+### ROADII Use Case 29 - Mobility Counts Prediction System (MCPS)
 
 - **Full Title:** “High-Resolution Mobility Traffic Count Estimation for Modeling, Planning, and Environmental Impact Applications” 
 - **Purpose and goals of the project:** The Mobility Traffic Counts code base geographically matches **traffic counting station data** with **probe-collected speed data** on the U.S. National Highway System (NHS), to produce training datasets for roadway traffic volume prediction across the entire road system. The code provides a Graphical User Interface (GUI) to easily load input data, select input and target columns, and train a model using basic AI neural network methods.
@@ -63,9 +63,11 @@ Figure 4 shows U.S. Census 2020 Population Density by County as an example of th
 *Figure 4. U.S. Census 2020 Population Density by County (Retrieved from https://maps.geo.census.gov/ddmv/map.html)*
 
 
-- **Purpose of the source code and how it relates to the overall goals of the project: REVIEW @BILLY** This code base will make it easier and more approachable for transportation agencies to develop a simple neural network model to output historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
-- **Length of the project:** The code base is currently in development. The ROADII team will update this repository as stable builds of the code are created. Development and testing will likely continue through spring 2024. 
+- **Purpose of the source code and how it relates to the overall goals of the project:** This tool will enable more accurate calculation and prediction of on-road traffic volumes for planning and highway project analysis purposes. Traditional methods of calculating traffic counts on roadways where there are no continuous counting stations require in-person measurements or inaccurate averaging methods. Future traffic volume forecasting may also be difficult or inaccurate due to reliance on traffic count measurements from many years ago or incomplete data.
 
+    The MCPS tool attempts to ease the burden on planning and transportation agencies by providing a simple neural network model to output historical traffic count estimates on roadways where there are no continuous count data available, as is the case for most National Highway System network links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future traffic forecasting efforts.
+
+- **Length of the project:** The code base is currently in a stable state. The ROADII Team may push updates irregularly as new data become available that might be used to update the model
 
 # 2. Prerequisites
 
@@ -74,12 +76,36 @@ Requires:
 - Installation of Python packages listed in *requirements.txt*
 - Command prompt application to run the source code from the current working directory
 
-
 # 3. Usage
 
-### Building the Mobility Counts Prediction System (MCPS) (WORK IN PROGRESS BUT SOME NAME HERE, REVIEW @BILLY)
+### Starting up the Streamlit Interface
 
-The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building a MCPS model, using a pre-trained model, and generating a dataset to test model performance. The following modules are contained therein:
+The steps to run the streamlit interface
+
+1) Clone the GitHub envionment to a location of your choosing on your machine
+2) In a command prompt application (e.g., Anaconda Prompt), execute the line **--> pip install -r requirements.txt** to ensure all necessary Python packages are up to date and installed in your working environment
+3) Run *main.py* to produce the Streamlit GUI. This can be done by executing the following line in a command prompt application **-->python -m streamlit run main.py** (ensuring that the dependencides in requirements.txt have been installed in a location accessible by this version of Python)
+4) The Streamlit Interface should now open in a browser window (See additional instructions for using the interface below)
+
+### Using the Streamlit Interface (A lot to add in here @Remi)
+
+The following section details the function of each tab within the Streamlit Interface
+
+- "0 - Introduction": Provides the user with background context on required datasets and terminology. Details the workflow of the Streamlit Interface. 
+- "1 - Generate Dataset":
+    * Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
+    * Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
+- "2 - Use a Traffic Counts Model": Allows the user to select a pre-trained AI Model (included with GitHub distribution) or one they've trained using the "Train Model" tab, anf apply that model to a generated dataset to obtain traffic volume predictions.
+    * If a generated dataset with TMAS data was used, there will be perforance metrics generated in the "Results" tab comparing the predicted values to the measured values from the TMAS data.
+- "3 - Results": View performance metrics comparing actual and predicted traffic volumes or view predictions for roads with no measured traffic volumes. Explore an interactive map of station locations from generated dataset.
+- "4 - Train Model": Train a new model using your generated dataset with the ability to select custom input features and target variable.
+- "5 - About": User views links for helpful information related to this source code e.g., Points of Contacts, GitHub link, and README download link
+
+### Source code included in the Mobility Counts Prediction System (MCPS)
+
+The [ml](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main/ml) folder contains the modules and classes to read in the requisite training data for building a MCPS model, using a pre-trained model, and generating a dataset to test model performance. The source code can be used if the user desires to interact directly with the model architecture, train custom versions of the MCPS model or adapt the functionality to another use case. Direct use of files other than the *main.py* file is not required to use the tool.
+
+The following modules are contained therein:
 
 - **<main.py>:** Produces a Streamlit GUI that reads the training data files, normalizes all columns to numerical types, and runs a training loop on the normalized data to produce a neural network to predict the user-chosen target column
 	* The user’s default web browser (e.g., Google Chrome, Microsoft Edge) opens a Streamlit application with the address "localhost:8501"
