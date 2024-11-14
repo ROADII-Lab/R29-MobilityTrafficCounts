@@ -138,7 +138,6 @@ The following section details the function of each tab within the Streamlit Inte
 - "4 - Train Model": Train a new model using your generated dataset with the ability to select custom input features and target variable.
 - "5 - About": User views links for helpful information related to this source code e.g., Points of Contacts, GitHub link, and README download link
 
-
 ALL GUI EXAMPLES BELOW NEED TO BE UPDATED WITH THE EXCEPTION OF THE MODEL TRAINING FIGURES (EPOCH VS LOSS, TERMINAL GRAPHIC FIGURES 9,10,11,12, AND TEXT OUTPUT FROM TERMINAL @REMI - LEAVING THE BAD ONES IN AS A EXAMPLE OF HOW TO LOAD IN IMAGES FROM THE RESOURCES FOLDER)
 
 (EVERYTHING BEFORE THIS NOTE IS EITHER GOOD OR JUST NEEDS ADDITIONAL CONTENT BUT DOESN'T NEED TO BE REMOVED, AFTER THIS LINE THERE IS A LOT OF OUTDATED MATERIAL SPECIFICALLY THE DOCUMENTATION OF THE INTERFACE THAT HAS SINCE BEEN UPDATED)
