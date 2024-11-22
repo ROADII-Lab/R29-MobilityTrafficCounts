@@ -285,12 +285,12 @@ def file_picker(label, key, style=wx.FD_OPEN, button_key=None, wildcard="All fil
         if dialog.ShowModal() == wx.ID_OK:
             file_path = dialog.GetPath()
             st.session_state[key] = file_path
-            st.write(f"Selected {label}: {file_path}")
+            st.write(f"Selected: {file_path}")
         else:
             st.write(f"No {label} selected.")
         dialog.Destroy()
     elif key in st.session_state:
-        st.write(f"Selected {label}: {st.session_state[key]}")
+        st.write(f"Selected: {st.session_state[key]}")
 
 def folder_picker(label, key, style=wx.DD_DEFAULT_STYLE, button_key=None):
     if st.button(f'Choose {label}', key=button_key):
@@ -391,814 +391,831 @@ def merge_normalized_and_raw_data(raw_df, normalized_df):
 
     return merged_df
 
-# Define Tabs in the desired order with numbering
-tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    '0. **0 - Introduction**',
-    '1. **1 - Generate Dataset**',
-    '2. **2 - Use a Traffic Counts Model**',
-    '3. **3 - Results**',
-    '4. **4 - Train Model**',
-    '5. **5 - About**'
-])
+if __name__ == "__main__":
+    # Define Tabs in the desired order with numbering
+    tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        '0. **0 - Introduction**',
+        '1. **1 - Generate Dataset**',
+        '2. **2 - Predict Traffic Counts**',
+        '3. **3 - Results**',
+        '4. **4 - Train Model**',
+        '5. **5 - About**'
+    ])
 
-st.markdown("""
-<style>
+    st.markdown("""
+    <style>
 
-	.stTabs [data-baseweb="tab-list"] {
-		gap: 7px;
-    }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 7px;
+        }
 
-	.stTabs [data-baseweb="tab"] {
-		height: 30px;
-        white-space: pre-line;
-		background-color: #E2EAF4;
-		border-radius: 5px 5px 5px 5px;
-		gap: 1px;
-		padding-top: 1px;
-		padding-bottom: 20px;
-        padding-right: 5px;
-        padding-left: 5px;
-    }
+        .stTabs [data-baseweb="tab"] {
+            height: 30px;
+            white-space: pre-line;
+            background-color: #E2EAF4;
+            border-radius: 5px 5px 5px 5px;
+            gap: 1px;
+            padding-top: 1px;
+            padding-bottom: 20px;
+            padding-right: 5px;
+            padding-left: 5px;
+        }
 
-	.stTabs [aria-selected="true"] {
-  		background-color: #FFFFFF;
-	}
+        .stTabs [aria-selected="true"] {
+            background-color: #FFFFFF;
+        }
 
-</style>""", unsafe_allow_html=True)
+    </style>""", unsafe_allow_html=True)
 
-# GUI tab #0: Introduction
-with tab0:
-    st.subheader("Welcome to the Mobility Traffic Counts AI Prediction Tool!")
-    st.write("""
-    ***Overview***
+    # GUI tab #0: Introduction
+    with tab0:
+        st.write("""
+        ### Overview
 
-    The Mobility Traffic Counts code base geographically matches traffic counting station data with probe-collected speed data on the U.S. National Highway System (NHS), to produce training datasets for roadway traffic volume prediction across the entire road system. The code provides a Graphical User Interface (GUI) to easily load input data, select input and target columns, and train a model using basic AI neural network methods.
+        The Mobility Traffic Counts code base geographically matches traffic counting station data with probe-collected speed data on the U.S. National Highway System (NHS), to produce training datasets for roadway traffic volume prediction across the entire road system. The code provides a Graphical User Interface (GUI) to easily load input data, select input and target columns, and train a model using basic AI neural network methods.
+        
+        This code base will make it easier and more approachable for transportation agencies to develop a neural network model to output estimates of historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
+
+        This application is designed to assist in predicting traffic counts using advanced AI models. Below is a description of background terminology and an overview of the workflow:
+        """)
+        st.markdown('---')
+        st.subheader("Glossary")
+
+        st.write("""
+        **National Highway System (NHS):**
+        The National Highway System (NHS) in the U.S. is a network of key highways, including the Interstate Highway System, essential for the economy, defense, and mobility. It was established to ensure connectivity and support transportation needs across the country. Components include Interstate Highways, other principal arterials, the Strategic Highway Network (STRAHNET), and intermodal connectors. The NHS plays a crucial role in efficient transportation, commerce, and national security.         
+            
+        **Highway Performance Monitoring System (HPMS):** 
+        A national level highway information system that includes information on the extent, condition, performance, use, and operating characteristics of the nation’s highways. Notably, HPMS includes traffic data reporting, AADT estimates at a segment level, vehicle miles traveled, road type, and urban and rural distinctions.
     
-    This code base will make it easier and more approachable for transportation agencies to develop a neural network model to output estimates of historical traffic count data on NHS roadway links for which real world measured counts are not available. This is the case for most NHS roadway links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future forecasting efforts.
-
-    This application is designed to assist in predicting traffic counts using advanced AI models. Below is a description of background terminology and an overview of the workflow:
-    """)
-    st.markdown('---')
-    st.subheader("Definitions")
-
-    st.write("""
-
-    **Highway Performance Monitoring System (HPMS):** 
-    A national level highway information system that includes information on the extent, condition, performance, use, and operating characteristics of the nation’s highways. Notably, HPMS includes traffic data reporting, AADT estimates at a segment level, vehicle miles traveled, road type, and urban and rural distinctions.
- 
-    **Traffic Monitoring Analysis System (TMAS):** 
-    An internal FHWA data program that assists in the collection of data on traffic volumes, vehicle classification, and truck weights for traffic statistics and analysis. Reports generated from the data include average daily vehicle traffic patterns for each hour, day, and month. These data are collected at XYZ counting stations....
- 
-    **National Performance Management Research Data Set (NPMRDS):** 
-    A vehicle probe-based travel time data set acquired by the FHWA. The dataset is an archived speed, travel time, and location referencing dataset. It includes hourly speeds and travel times at 5-minute intervals for passenger vehicles, trucks, and a combination of the two. NPMRDS also includes traffic counts as an average for any day of the week for the year.
-    """)
-    st.markdown('---')
-    st.subheader("Workflow")
-    st.write("""
-    1. **Generate Dataset:**
-       - Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
-       - Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
-
-
-    2. **Use a Traffic Counts Model:**
-       - Upload or select a pre-trained AI model.
-       - Apply the model to the generated dataset to obtain traffic volume predictions.
-
-    3. **Results:**
-       - View performance metrics comparing actual and predicted traffic volumes or view predictions for roads with no measured traffic volumes.
-       - Explore station locations on an interactive map.
-
-    4. **Train Model:**
-       - Train a new AI model using your dataset.
-       - Select input features and target variables for model training.
-
-    5. **About:**
-       - Access additional resources, documentation, and contact information.
-    """)
-    st.markdown('---')
-    st.write("""
-    **Get Started:**
-    Navigate through the tabs to generate your dataset, apply AI models, view results, and train new models. Ensure that all required files are available and correctly formatted before proceeding to each step.
-
-    **Need Assistance?**
-    Refer to the [GitHub Repository](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information or contact our team at William.Chupp@dot.gov or Eric.Englin@dot.gov.
-    """)
-
-# GUI tab #1: Generate Dataset
-with tab1:
-    st.header('Dataset Creation')
-
-    st.write("""
-    **Depending on your needs, you can generate an Inference Dataset or a Training/Testing Dataset.**
+        **Traffic Monitoring Analysis System (TMAS):** 
+        An internal FHWA data program that assists in the collection of data on traffic volumes, vehicle classification, and truck weights for traffic statistics and analysis. Reports generated from the data include average daily vehicle traffic patterns for each hour, day, and month. These data are collected at approximately 8000 continuous traffic counting stations around the country. These state-operated station data are submitted to and aggregated by FHWA into the full TMAS dataset each year.
     
-    - **Inference Dataset:** This will create a dataset that can generate predictions for any TMC road segments. This Dataset does not require the use of TMAS Counting Station data that provides existing traffic counts in select locations throughout the USA.
-    - **Training/Testing Dataset:** This will create a dataset that only contains road segment data that overlaps with TMAS Counting Station data. This dataset is used for training a new model or testing the performance of an existing model.
-    
-    Ensure that the year(s) of the TMAS data matches the year(s) of NPMRDS data if generating a Training/Testing Dataset.
-    
-    **To download the Shapefile for the USA, go to this [website](https://npmrds.ritis.org/analytics/shapefiles) (requires access) and scroll to the bottom of the page to National Shape Files and select the most recent shape file for the United States.**
-    """)
+        **National Performance Management Research Data Set (NPMRDS):** 
+        A vehicle probe-based travel time data set acquired by the FHWA. The dataset is an archived speed, travel time, and location referencing dataset. It includes hourly speeds and travel times at 5-minute intervals for passenger vehicles, trucks, and a combination of the two. NPMRDS also includes traffic counts as an average for any day of the week for the year.
+        
+        **Traffic Mesage Channel (TMC):**
+        In the context of the National Performance Management Research Data Set (NPMRDS), a Traffic Message Channel (TMC) is a segment of road used for reporting traffic data. TMCs are standardized sections of highways and roads that help in collecting and analyzing traffic patterns, speeds, and travel times. This data is crucial for transportation planning and performance measurement.
+        """)
+        st.markdown('---')
+        st.subheader("Workflow")
+        st.write("""
+        1. **Generate Dataset:**
+        - Generate a dataset to predict traffic volumes on roads with no existing traffic counting stations (TMAS).
+        - Generate a dataset to predict traffic volumes on roads with existing traffic counting stations (TMAS). This is used for testing the performance of the model or training a new model.
 
-    st.markdown('---') 
 
-    # Toggle switch for dataset type
-    dataset_mode = st.radio(
-        "Select Dataset Type:",
-        ("Inference Dataset", "Training/Testing Dataset"),
-        index=0
-    )
+        2. **Use a Traffic Counts Model:**
+        - Upload or select a pre-trained AI model.
+        - Apply the model to the generated dataset to obtain traffic volume predictions.
 
-    if dataset_mode == "Training/Testing Dataset":
-        st.subheader("Step 1: Geo Join TMC Road Links with TMAS Stations")
-        st.write("This step performs a geospatial join between TMC shapefiles and TMAS stations.")
+        3. **Results:**
+        - View performance metrics comparing actual and predicted traffic volumes or view predictions for roads with no measured traffic volumes.
+        - Explore station locations on an interactive map.
 
-        file_picker('TMAS Station data file', 'PATH_TMAS_STATION', button_key='tmas_station_file_picker_tab1')
-        folder_picker('Directory of Shapefiles converted to CSV', 'PATH_tmc_shp', button_key='tmc_shp_folder_picker_tab1')
-        sample_size = st.number_input(
-            'Sample Size (number of stations to sample, set to 10000 for all stations)',
-            min_value=1,
-            value=10000,
-            step=1
+        4. **Train Model:**
+        - Train a new AI model using your dataset.
+        - Select input features and target variables for model training.
+
+        5. **About:**
+        - Access additional resources, documentation, and contact information.
+        """)
+        st.markdown('---')
+        st.write("""
+        **Get Started:**
+        Navigate through the tabs to generate your dataset, apply AI models, view results, and train new models. Ensure that all required files are available and correctly formatted before proceeding to each step.
+
+        **Need Assistance?**
+        Refer to the [GitHub Repository](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information or contact our team at William.Chupp@dot.gov or Eric.Englin@dot.gov.
+        """)
+
+    # GUI tab #1: Generate Dataset
+    with tab1:
+        st.header('Dataset Creation')
+
+        st.write("""
+        **Depending on your needs, you can generate a dataset for predicting traffic counts or for training your own version of the model.**""")
+
+        dataset_mode = st.radio(
+            "Select Dataset Type:",
+            ("**Predict Traffic Counts:**", 
+            "**Training/Testing Dataset:**"),
+            index=0, label_visibility="collapsed", captions=('**Choose this option to pre-process a dataset that can generate predictions for any TMC road segments. Generating traffic count predictions does not require the use of TMAS Counting Station data that provides existing traffic counts in select locations throughout the US.**',
+                                                            '**Choose this option to create a dataset that only contains road segment data that overlaps with TMAS Counting Station data. This dataset is used for training a new model or testing the performance of an existing model. This option is intended for advanced usage and should only be used if you are creating a custom version of the traffic counts prediction model.**')
         )
 
-        title_input = st.text_input("Enter a title for the output CSV:", value="default_title")
+        if dataset_mode == "Training/Testing Dataset":
+            st.write('Ensure that the year(s) of the TMAS data matches the year(s) of NPMRDS data if generating a Training/Testing Dataset.')
+            st.subheader("Step 1: Geo Join TMC Road Links with TMAS Stations")
 
-        if st.button('Run Step 1: Geo Join', key='run_step1_button_tab1'):
-            if 'PATH_TMAS_STATION' in st.session_state and 'PATH_tmc_shp' in st.session_state:
-                try:
-                    PATH_TMAS_STATION = st.session_state['PATH_TMAS_STATION']
-                    PATH_tmc_shp_folder = st.session_state['PATH_tmc_shp']
+            st.write("**To download the Shapefile for the USA, navigate to the [National Performance Measurement and Evaluation Data Set Page](https://npmrds.ritis.org/analytics/shapefiles) (requires login) and scroll to the bottom of the page to National Shape Files and select the most recent shape file for the United States.**")
 
-                    processed_title = "TMC_Station_" + title_input.replace(" ", "_")
-                    if not processed_title.endswith('.csv'):
-                        processed_title += '.csv'
+            st.write("This step performs a geospatial join between TMC shapefiles and TMAS stations.")
 
-                    OUTPUT_CSVFile = os.path.join(os.getcwd(), 'data', processed_title)
-                    if not os.path.exists(os.path.dirname(OUTPUT_CSVFile)):
-                        os.makedirs(os.path.dirname(OUTPUT_CSVFile))
+            file_picker('TMAS Station data file', 'PATH_TMAS_STATION', button_key='tmas_station_file_picker_tab1')
+            folder_picker('Directory of Shapefiles converted to CSV', 'PATH_tmc_shp', button_key='tmc_shp_folder_picker_tab1')
+            sample_size = st.number_input(
+                'Sample Size (number of stations to sample, set to 10000 for all stations)',
+                min_value=1,
+                value=10000,
+                step=1
+            )
 
-                    fig = run_step1_geojoin(
-                        PATH_TMAS_STATION=PATH_TMAS_STATION,
-                        OUTPUT_CSVFile=OUTPUT_CSVFile,
-                        sample_size=sample_size,
-                        PATH_tmc_shp_folder=PATH_tmc_shp_folder
-                    )
+            title_input = st.text_input("Enter a title for the output CSV:", value="default_title")
 
-                    st.success(f"`{processed_title}` saved at {OUTPUT_CSVFile}")
+            if st.button('Run Step 1: Geo Join', key='run_step1_button_tab1'):
+                if 'PATH_TMAS_STATION' in st.session_state and 'PATH_tmc_shp' in st.session_state:
+                    try:
+                        PATH_TMAS_STATION = st.session_state['PATH_TMAS_STATION']
+                        PATH_tmc_shp_folder = st.session_state['PATH_tmc_shp']
 
-                    st.pyplot(fig)
+                        processed_title = "TMC_Station_" + title_input.replace(" ", "_")
+                        if not processed_title.endswith('.csv'):
+                            processed_title += '.csv'
 
-                    tier1 = pd.read_csv(OUTPUT_CSVFile)
-                    if 'Tmc' not in tier1.columns:
-                        st.error("The 'Tmc' column is missing from the Geo Joined CSV.")
-                    else:
-                        Tmc_ids = tier1['Tmc'].tolist()
+                        OUTPUT_CSVFile = os.path.join(os.getcwd(), 'data', processed_title)
+                        if not os.path.exists(os.path.dirname(OUTPUT_CSVFile)):
+                            os.makedirs(os.path.dirname(OUTPUT_CSVFile))
 
-                        pure_csv_filename = os.path.splitext(os.path.basename(OUTPUT_CSVFile))[0] + '_pure.csv'
-                        pure_csv_path = os.path.join(os.path.dirname(OUTPUT_CSVFile), pure_csv_filename)
-                        tier1['Tmc'].to_csv(pure_csv_path, index=False, header=False)
+                        fig = run_step1_geojoin(
+                            PATH_TMAS_STATION=PATH_TMAS_STATION,
+                            OUTPUT_CSVFile=OUTPUT_CSVFile,
+                            sample_size=sample_size,
+                            PATH_tmc_shp_folder=PATH_tmc_shp_folder
+                        )
 
-                        st.success(f"`{pure_csv_filename}` saved at {pure_csv_path}")
+                        st.success(f"`{processed_title}` saved at {OUTPUT_CSVFile}")
 
-                        Tmc_ids_str = ','.join(map(str, Tmc_ids))
-                        
-                        st.subheader("TMC IDs CSV Output")
-                        st.text_area("TMC IDs CSV", value=Tmc_ids_str, height=100, disabled=True)
-                        st.write("You can select and copy the text above.")
+                        st.pyplot(fig)
 
-                        # Automatically set the TMC Station file path for Training/Testing Dataset
-                        st.session_state['tmc_station_file_tab1'] = OUTPUT_CSVFile
+                        tier1 = pd.read_csv(OUTPUT_CSVFile)
+                        if 'Tmc' not in tier1.columns:
+                            st.error("The 'Tmc' column is missing from the Geo Joined CSV.")
+                        else:
+                            Tmc_ids = tier1['Tmc'].tolist()
 
-                        st.success(f"TMC Station file path set to `{OUTPUT_CSVFile}`")
-                except Exception as e:
-                    st.error(f"An error occurred during the Geo Join process: {e}")
-            else:
-                st.error("Please choose the TMAS Station data file and the directory of Shapefile CSVs.")
+                            pure_csv_filename = os.path.splitext(os.path.basename(OUTPUT_CSVFile))[0] + '_pure.csv'
+                            pure_csv_path = os.path.join(os.path.dirname(OUTPUT_CSVFile), pure_csv_filename)
+                            tier1['Tmc'].to_csv(pure_csv_path, index=False, header=False)
 
+                            st.success(f"`{pure_csv_filename}` saved at {pure_csv_path}")
 
+                            Tmc_ids_str = ','.join(map(str, Tmc_ids))
+                            
+                            st.subheader("TMC IDs CSV Output")
+                            st.text_area("TMC IDs CSV", value=Tmc_ids_str, height=100, disabled=True)
+                            st.write("You can select and copy the text above.")
 
-    # Step 2: Download and Extract NPMRDS Data
-    st.markdown('---')  
+                            # Automatically set the TMC Station file path for Training/Testing Dataset
+                            st.session_state['tmc_station_file_tab1'] = OUTPUT_CSVFile
 
-    if dataset_mode == "Inference Dataset":
-        st.subheader("Step 1: Download and Extract NPMRDS Data for Inference")
-        st.write("""
-        **Download and extract NPMRDS data from this [website](https://npmrds.ritis.org/analytics/download/) (requires access).** 
-
-        - Additional info on the use of the NPMRDS RITIS site can be found in the README.
-
-        **The NPMRDS RITIS Massive Data Downloader will give you the NPMRDS All Data, NPMRDS Passenger Data, and NPMRDS Truck Data files as well as the TMC ID file. These will come in 3 separate zip files where the TMC Identification file will be the same in all, but the data files will be different and will need to be identified by opening the readme in each zip. These data files should then be saved and named accordingly so they are not mixed up. These files are selected in Step 3 below.**
-
-        **Tips on Using NPMRDS RITIS Massive Data Downloader:**
-        1. **Select Segment Type:** Choose the type of segments you want to download.
-        2. **Select Year:** Select the year for your data.
-        3. **Select Roads:** Use the built-in tools on the website to select a region or set of roads.
-        4. **Select One or More Date Ranges:** Choose the date range of the data you would like to download.
-        5. **Select Days of Week:** Select every day of the week (default).
-        6. **Select One or More Times of Day:** Select 12:00 AM to 11:59 PM (default).
-        7. **Select Data Sets and Measures:** Check the boxes for Passenger, Trucks, and their sub-measures.
-        8. **Select Units for Travel Time:** Choose "seconds".
-        9. **Volume Data:** Leave unchecked.
-        10. **Null Record Handling:** Leave unchecked.
-        11. **Select Averaging:** Choose "1 hour".
-        12. **Provide Title:** Enter a relevant title for your download.
-
-        **Note:** This mode does not utilize any TMAS data.
-        """)
-    else:
-        st.subheader("Step 2: Download and Extract NPMRDS Data for Training/Testing")
-        st.write("""
-        Download and extract NPMRDS data from this [website](https://npmrds.ritis.org/analytics/download/) (requires access). 
-
-        - Additional info on the use of the NPMRDS RITIS site can be found in the README.
-
-        **The NPMRDS RITIS Massive Data Downloader will give you the NPMRDS All Data, NPMRDS Passenger Data, and NPMRDS Truck Data files as well as the TMC ID file. These will come in 3 separate zip files where the TMC Identification file will be the same in all, but the data files will be different and will need to be identified by opening the readme in each zip. These data files should then be saved and named accordingly so they are not mixed up. These files are selected in Step 3 below.**
-
-        **Tips on Using NPMRDS RITIS Massive Data Downloader:**
-        1. **Select Segment Type:** Choose the type of segments you want to download.
-        2. **Select Year:** Select the year of data that aligns with your TMAS data.
-        3. **Select Roads:** Paste in comma-separated TMC codes into the "Segment Codes" tab and press "Add Segments".
-        4. **Select One or More Date Ranges:** Choose the date range of the data you would like to download.
-        5. **Select Days of Week:** Select every day of the week (default).
-        6. **Select One or More Times of Day:** Select 12:00 AM to 11:59 PM (default).
-        7. **Select Data Sets and Measures:** Check the boxes for Passenger, Trucks, and their sub-measures.
-        8. **Select Units for Travel Time:** Choose "seconds".
-        9. **Volume Data:** Leave unchecked.
-        10. **Null Record Handling:** Leave unchecked.
-        11. **Select Averaging:** Choose "1 hour".
-        12. **Provide Title:** Enter a relevant title for your download.
-    """)
-
-    # Step 3: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data
-    st.markdown('---')
-
-    if dataset_mode == "Inference Dataset":
-        st.subheader("Step 2: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data")
-        # Only show necessary file pickers for Inference
-        file_picker('NPMRDS All Data file', 'npmrds_all_file_tab2', button_key='npmrds_all_file_picker_tab1')
-        file_picker('NPMRDS Passenger Data file', 'npmrds_pass_file_tab2', button_key='npmrds_pass_file_picker_tab1')
-        file_picker('NPMRDS Truck Data file', 'npmrds_truck_file_tab2', button_key='npmrds_truck_file_picker_tab1')
-        file_picker('TMC ID file', 'tmc_id_file_tab2', button_key='tmc_id_file_picker_tab1')
-    else:
-        st.subheader("Step 3: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data")
-        # Show all file pickers for Training/Testing
-        # TMCS Station file is already set after Step 1
-        st.write("**TMC Station File:**")
-        if 'tmc_station_file_tab1' in st.session_state:
-            st.write(f"Selected TMC Station File: {st.session_state['tmc_station_file_tab1']}")
-        else:
-            st.write("TMC Station file will be set after running Step 1.")
-
-        file_picker('NPMRDS All Data file', 'npmrds_all_file_tab2', button_key='npmrds_all_file_picker_tab1')
-        file_picker('NPMRDS Passenger Data file', 'npmrds_pass_file_tab2', button_key='npmrds_pass_file_picker_tab1')
-        file_picker('NPMRDS Truck Data file', 'npmrds_truck_file_tab2', button_key='npmrds_truck_file_picker_tab1')
-        file_picker('TMC ID file', 'tmc_id_file_tab2', button_key='tmc_id_file_picker_tab1')
-
-    # Step 4: Choose the Output File Path
-    st.markdown('---') 
-
-    st.subheader("Final Step: Choose the Output File Path and Press **Join and Save Data** button.")
-    
-    if 'output_folder_tab2' not in st.session_state:
-        st.session_state['output_folder_tab2'] = ''
-    if 'dataset_title_tab2' not in st.session_state:
-        st.session_state['dataset_title_tab2'] = ''
-
-    col1, col2 = st.columns([2, 3])
-
-    with col1:
-        folder_picker('Choose Output Folder', 'output_folder_tab2', button_key='output_folder_picker_tab1')
-
-    with col2:
-        st.text_input("Enter a title for the output dataset:", value="NPMRDS_TMC_TMAS_US_SUBSET_20_22", key='dataset_title_tab2')
-
-    if st.button('**Join and Save Data**', key='join_and_save_button_tab1'):
-        if dataset_mode == "Inference Dataset":
-            required_keys = [
-                'npmrds_all_file_tab2', 
-                'npmrds_pass_file_tab2', 
-                'npmrds_truck_file_tab2', 
-                'tmc_id_file_tab2', 
-                'output_folder_tab2', 
-                'dataset_title_tab2'
-            ]
-        else:
-            required_keys = [
-                'tmc_station_file_tab1',
-                'npmrds_all_file_tab2', 
-                'npmrds_pass_file_tab2', 
-                'npmrds_truck_file_tab2', 
-                'tmc_id_file_tab2', 
-                'output_folder_tab2', 
-                'dataset_title_tab2'
-            ]
-        
-        # Check if all required keys are present and not empty
-        missing_keys = [key for key in required_keys if key not in st.session_state or not st.session_state[key]]
-        if not missing_keys:
-            try:
-                output_folder = st.session_state['output_folder_tab2']
-                dataset_title = st.session_state['dataset_title_tab2']
-                if not output_folder:
-                    st.error("Please select an output folder.")
-                elif not dataset_title:
-                    st.error("Please enter a title for the dataset.")
+                            st.success(f"TMC Station file path set to `{OUTPUT_CSVFile}`")
+                    except Exception as e:
+                        st.error(f"An error occurred during the Geo Join process: {e}")
                 else:
-                    run_joins(dataset_mode)
-                    # Success message is handled inside run_joins
-            except Exception as e:
-                st.error(f"An error occurred during the join process: {e}")
-        else:
-            if dataset_mode == "Inference Dataset":
-                st.error("Please ensure all required NPMRDS files, output folder, and dataset title are provided before joining.")
-            else:
-                st.error("Please ensure all required NPMRDS files, TMC Station file, output folder, and dataset title are provided before joining.")
+                    st.error("Please choose the TMAS Station data file and the directory of Shapefile CSVs.")
 
-# GUI tab #2: Use a Traffic Counts Model
-with tab2:
-    st.header('Use a Traffic Counts Model')
-    
-# Input column(s) and target column GUI buttons (previous single window)
 
-    # Set default model storage path if not already set
-    if 'model_storage_path' not in st.session_state:
-        st.session_state['model_storage_path'] = '..\\models\\'
 
-    # Create columns for layout
-    col1, col2 = st.columns([4, 1])
-
-    with col1:
-        st.write(f"Current Model Storage Location: {st.session_state['model_storage_path']}")
-
-    with col2:
-        # Smaller button to change model storage location
-        if st.button('Change Model Lookup Location', key='change_model_storage_location'):
-            # Use wxPython to select a folder
-            app = wx.App(False)
-            dialog = wx.DirDialog(None, 'Select Model Storage Location:', style=wx.DD_DEFAULT_STYLE)
-            if dialog.ShowModal() == wx.ID_OK:
-                dir_path = dialog.GetPath()
-                st.session_state['model_storage_path'] = dir_path
-                st.write(f"Selected Model Storage Location: {dir_path}")
-            else:
-                st.write("No Model Storage Location selected.")
-            dialog.Destroy()
-
-    # Get the list of model files from the current model storage path
-    ai = module_ai.ai()
-    list_of_model_files = ai.get_model_list(st.session_state['model_storage_path'])
-
-    # Display the selectbox for model files
-    model_filename = st.selectbox(label='Choose a model file', options=list_of_model_files, key='model_filename_selectbox')
-
-    # File picker for generated dataset path
-    file_picker('Choose Generated Dataset from Step 1 (.pkl)', 'raw_dataset_path', button_key='raw_dataset_picker_tab2', wildcard="Pickle files (*.pkl)|*.pkl")
-
-    if 'raw_dataset_path' in st.session_state:
-        raw_dataset_path = st.session_state['raw_dataset_path']
-
-        try:
-            t_result_df, t_normalized_df, t_ai, t_source_data = setup(raw_dataset_path)
-            st.success("Dataset loaded successfully.")
-        except Exception as e:
-            st.error(f"Error loading the dataset: {e}")
-            t_result_df, t_normalized_df, t_ai, t_source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
-
-        if not t_result_df.empty and not t_normalized_df.empty and model_filename:
-            if st.button('Use Model', key='use_model_button_tab2'):
-                st.write('Running loaded model on test dataset...')
-                try:
-                    columns = [
-                        'tmc_code', 'measurement_tstamp', 'speed_All', 'data_density_All',
-                        'data_density_Pass', 'data_density_Truck', 'travel_time_seconds_All', 'start_latitude',
-                        'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'aadt', 'urban_code',
-                        'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
-                    ]
-                    columns.extend(t_source_data.calculated_columns)
-
-                    # Convert columns to numeric and handle errors if present
-                    for col in t_normalized_df.columns:
-                        try:
-                            t_normalized_df[col] = pd.to_numeric(t_normalized_df[col], errors='coerce')
-                        except Exception as e:
-                            print(f"Error converting column {col}: {e}")
-                    
-
-                    answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
-                    if answer_df.empty:
-                        st.write("Model or data was not properly loaded. Please check your inputs.")
-                    else:
-                        answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
-                        output_file_path = os.path.join('data', f"{os.path.splitext(os.path.basename(raw_dataset_path))[0]}_predictions.pkl")
-                        answer_df_merged.to_pickle(output_file_path)
-                        st.session_state['answer_df_merged'] = answer_df_merged
-                        st.success(f"DataFrame successfully output to location: **{output_file_path}** -- View Results in the **Results** Tab")
-                except Exception as e:
-                    st.error(f"An error occurred while using the model: {e}")
-        else:
-            st.write("Please ensure both the model file and the generated dataset are selected.")
-
-# Cache data preparation for the map
-@st.cache_data
-def prepare_map_data(df):
-    if 'start_latitude_norm' in df.columns and 'start_longitude_norm' in df.columns:
-        lat_col, lon_col = 'start_latitude_norm', 'start_longitude_norm'
-    elif 'start_latitude' in df.columns and 'start_longitude' in df.columns:
-        lat_col, lon_col = 'start_latitude', 'start_longitude'
-    else:
-        return None, None, None
-
-    return df, lat_col, lon_col
-
-# Generate and cache the folium map
-@st.cache_resource
-def create_folium_station_map(df):
-    # Use a reduced dataset or sampling to minimize map complexity
-    sample_df = df[['start_latitude_norm', 'start_longitude_norm', 'tmc_code']].dropna().sample(500)  # Limit to 500 points
-
-    # Create a folium map centered on the USA
-    map_center = [39.8283, -98.5795]  # Approximate center of the USA
-    folium_map = folium.Map(location=map_center, zoom_start=4)
-
-    # Add points to the map
-    for _, row in sample_df.iterrows():
-        folium.Marker(
-            location=[row['start_latitude_norm'], row['start_longitude_norm']],
-            popup=row['tmc_code'],
-            icon=folium.Icon(color='blue', icon='info-sign')
-        ).add_to(folium_map)
-
-    return folium_map
-
-# Extract unique TMC codes and dates for dropdowns
-@st.cache_data
-def get_unique_tmc_codes_and_dates(df):
-    tmc_codes = df['tmc_code'].unique()
-    dates = df['measurement_tstamp'].dt.date.unique()
-    return sorted(tmc_codes), sorted(dates)
-
-# Cache the filtered DataFrame
-@st.cache_data
-def filter_data_by_tmc_and_date(df, selected_tmc, selected_date):
-    filtered_df = df[(df['tmc_code'] == selected_tmc) & (df['measurement_tstamp'].dt.date == selected_date)]
-    return filtered_df
-
-# GUI tab #3: Results
-with tab3:
-    st.header('Traffic Counts Prediction Results')
-    
-    st.subheader("Upload a Predictions File")
-    if st.button('Choose Predictions File', key='choose_predictions_file_tab3'):
-        app = wx.App(False)
-        dialog = wx.FileDialog(None, 'Select a _predictions.pkl File:', wildcard="Pickle files (*.pkl)|*.pkl", style=wx.FD_OPEN)
-        if dialog.ShowModal() == wx.ID_OK:
-            uploaded_file_path = dialog.GetPath()
-            st.session_state['uploaded_predictions_path'] = uploaded_file_path
-            st.write(f"Selected Predictions File: {uploaded_file_path}\nAttempting to Load...")
-        else:
-            st.write("No Predictions File selected.")
-        dialog.Destroy()
-    
-    if 'uploaded_predictions_path' in st.session_state:
-        uploaded_file_path = st.session_state['uploaded_predictions_path']
-        try:
-            uploaded_df = pd.read_pickle(uploaded_file_path)
-            st.session_state['uploaded_df'] = uploaded_df
-            st.success("Uploaded predictions file loaded successfully.")
-        except Exception as e:
-            st.error(f"Error loading the uploaded file: {e}")
-
-    df_to_display = None
-
-    if 'answer_df_merged' in st.session_state:
-        df_to_display = st.session_state['answer_df_merged']
-
-    if 'uploaded_df' in st.session_state:
-        df_to_display = st.session_state['uploaded_df']
-
-    if df_to_display is not None and not df_to_display.empty:
-        # Calculate overall performance metrics for the entire dataset
-        if 'VOL' in df_to_display.columns:
-            overall_performance_metrics = setup_funcs.calculate_performance_metrics(df_to_display)
-        else:
-            overall_performance_metrics = setup_funcs.calculate_data_metrics(df_to_display)
-
-        # Display overall performance metrics in a table
-        st.header('Overall Performance Metrics')
-
-        if 'VOL' in df_to_display.columns:
-            # Time of maximum difference and TMC code
-            max_diff_index = (df_to_display['VOL'] - df_to_display['Predicted_VOL']).abs().idxmax()
-            max_diff_row = df_to_display.loc[max_diff_index]
+        # Step 2: Download and Extract NPMRDS Data
+        st.markdown('---')  
+        if dataset_mode == "**Predict Traffic Counts:**":
+            st.subheader("Step 1: Download and Extract NPMRDS Data for Inference")
+            st.write("""
+            The [NPMRDS Massive Data Downloader](https://npmrds.ritis.org/analytics/download/) (requires access) allows users to download the speed data for all vehicles, passenger cars, and heavy trucks, as well as the road link identication file. The three downloaded zipped files will include two '.csv' files (one for the speed data and one for the road links (TMCs) for which the speed data are relevant). A text file in each zipped download indicates whether the speed data are for all vehicles, passenger cars, or trucks. Users should unzip, save, and rename the '.csv' files based on the vehicle type indicated in the 'contents.txt' file.
             
-            # Collect metrics into a dictionary
-            metrics_dict = {
-                'Metric': [
-                    'Overall Percent Difference',
-                    'Daytime Percent Difference (7 AM - 7 PM)',
-                    'Nighttime Percent Difference (7 PM - 7 AM)',
-                    'Number of zeros in VOL',
-                    'Number of zeros in Predicted_VOL',
-                    'Number of rows with zero in either VOL or Predicted_VOL',
-                    'Average Absolute Difference for zeros',
-                    'Median Absolute Difference for zeros',
-                    'Time of Maximum Difference',
-                    'TMC Code of Maximum Difference'
-                ],
-                'Value': [
-                    f"{overall_performance_metrics['Overall Percent Difference']:.2f}%",
-                    f"{overall_performance_metrics['Daytime Percent Difference']:.2f}%",
-                    f"{overall_performance_metrics['Nighttime Percent Difference']:.2f}%",
-                    overall_performance_metrics['Zeros in VOL'],
-                    overall_performance_metrics['Zeros in Predicted_VOL'],
-                    overall_performance_metrics['Rows with zeros'],
-                    f"{overall_performance_metrics['Average Absolute Difference (zeros)']:.2f}",
-                    f"{overall_performance_metrics['Median Absolute Difference (zeros)']:.2f}",
-                    max_diff_row['measurement_tstamp'],
-                    max_diff_row['tmc_code']
-                ]
-            }
+            **Steps for Using NPMRDS RITIS Massive Data Downloader:**
+            1. **Select Segment Type:** Match the year in the segment type input to your analysis year 
+            2. **Select Roads:** Use the built-in tools on the website to select a region or set of roads.
+            3. **Select One or More Date Ranges:** Choose the date range of the data you would like to download.
+            4. **Select Days of Week:** We recommend selecting every day of the week (default).
+            5. **Select One or More Times of Day:** We recommend selecting 12:00 AM to 11:59 PM (default).
+            6. **Select Data Sets and Measures:** Check all of the boxes for "Passenger vehicles", "Trucks and passenger vehicles", "Trucks", and their sub-measures.
+            7. **Select Units for Travel Time:** Choose "seconds".
+            8. **Volume Data:** Leave unchecked.
+            9. **Null Record Handling:** Leave unchecked.
+            10. **Select Averaging:** Choose "1 hour".
+            11. **Provide Title:** Enter a relevant title for your download.
+            12. **Notification:** We recommend checking the box to receive a notification.
 
-            # Convert to DataFrame and reset index
-            metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
-
-            # Display the metrics DataFrame
-            st.table(
-                metrics_df.style
-                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
-            )
-
-            # Percentage within Error Thresholds plot
-            if 'Thresholds' in overall_performance_metrics and 'Overall Percentage Within' in overall_performance_metrics:
-                st.header('Percentage Within Error Thresholds (Excluding Zeros)')
-                fig_overall = px.line(
-                    x=overall_performance_metrics['Thresholds'], 
-                    y=overall_performance_metrics['Overall Percentage Within'],
-                    labels={'x': 'Error Threshold (%)', 'y': 'Percentage of Data Points Within Threshold (%)'},
-                    title='Percentage of Data Points Within Error Thresholds (Excluding Zeros)',
-                    markers=True
-                )
-                # Use container width
-                st.plotly_chart(fig_overall, use_container_width=True)
+            **Note:** After pressing "SUBMIT," your downloads can be found in the "My History" link at the top right of the page.
+            """)
         else:
-            # Collect metrics into a dictionary
-            metrics_dict = {
-                'Metric': [
-                    'Average Morning Peak (6 AM - 9 AM)',
-                    'Average Evening Peak (4 PM - 7 PM)'
-                ],
-                'Value': [
-                    f"{overall_performance_metrics['Average Morning Peak']:.2f}",
-                    f"{overall_performance_metrics['Average Evening Peak']:.2f}"
-                ]
-            }
+            st.subheader("Step 2: Download and Extract NPMRDS Data for Training/Testing")
+            st.write("""
+            Download and extract NPMRDS data from this [website](https://npmrds.ritis.org/analytics/download/) (requires access). 
 
-            # Convert to DataFrame and reset index
-            metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
+            - Additional info on the use of the NPMRDS RITIS site can be found in the README.
 
-            # Display the metrics DataFrame
-            st.table(
-                metrics_df.style
-                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
-            )
+            **The NPMRDS RITIS Massive Data Downloader will give you the NPMRDS All Data, NPMRDS Passenger Data, and NPMRDS Truck Data files as well as the TMC ID file. These will come in 3 separate zip files where the TMC Identification file will be the same in all, but the data files will be different and will need to be identified by opening the readme in each zip. These data files should then be saved and named accordingly so they are not mixed up. These files are selected in Step 3 below.**
 
-        st.header('Visualize Predictions')
+            **Tips on Using NPMRDS RITIS Massive Data Downloader:**
+            1. **Select Segment Type:** Choose the type of segments you want to download.
+            2. **Select Year:** Select the year of data that aligns with your TMAS data.
+            3. **Select Roads:** Paste in comma-separated TMC codes into the "Segment Codes" tab and press "Add Segments".
+            4. **Select One or More Date Ranges:** Choose the date range of the data you would like to download.
+            5. **Select Days of Week:** Select every day of the week (default).
+            6. **Select One or More Times of Day:** Select 12:00 AM to 11:59 PM (default).
+            7. **Select Data Sets and Measures:** Check the boxes for Passenger, Trucks, and their sub-measures.
+            8. **Select Units for Travel Time:** Choose "seconds".
+            9. **Volume Data:** Leave unchecked.
+            10. **Null Record Handling:** Leave unchecked.
+            11. **Select Averaging:** Choose "1 hour".
+            12. **Provide Title:** Enter a relevant title for your download.
+        """)
 
-        # Extract unique TMC codes for dropdown
-        @st.cache_data
-        def get_unique_tmc_codes(df):
-            tmc_codes = df['tmc_code'].unique()
-            return sorted(tmc_codes)
+        # Step 3: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data
+        st.markdown('---')
 
-        # Cache function to get dates for a given TMC code
-        @st.cache_data
-        def get_dates_for_tmc(df, selected_tmc):
-            dates = df[df['tmc_code'] == selected_tmc]['measurement_tstamp'].dt.date.unique()
-            return sorted(dates)
-
-        # Create dropdown for TMC codes
-        tmc_codes = get_unique_tmc_codes(df_to_display)
-        selected_tmc = st.selectbox('Select TMC Code', tmc_codes)
-
-        # After TMC code is selected, get available dates
-        if selected_tmc:
-            dates = get_dates_for_tmc(df_to_display, selected_tmc)
-            if dates:
-                selected_date = st.selectbox('Select Date', dates)
-            else:
-                st.write("No dates available for the selected TMC code.")
-                selected_date = None
+        if dataset_mode == "**Predict Traffic Counts:**":
+            st.subheader("Step 2: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data")
+            # Only show necessary file pickers for Inference
+            file_picker('NPMRDS All Data file', 'npmrds_all_file_tab2', button_key='npmrds_all_file_picker_tab1')
+            file_picker('NPMRDS Passenger Data file', 'npmrds_pass_file_tab2', button_key='npmrds_pass_file_picker_tab1')
+            file_picker('NPMRDS Truck Data file', 'npmrds_truck_file_tab2', button_key='npmrds_truck_file_picker_tab1')
+            file_picker('TMC ID file', 'tmc_id_file_tab2', button_key='tmc_id_file_picker_tab1')
         else:
-            selected_date = None
-
-        # Proceed only if a date is selected
-        if selected_date is not None:
-            # Filter the data for the selected TMC code and date
-            filtered_df = filter_data_by_tmc_and_date(df_to_display, selected_tmc, selected_date)
-
-            if filtered_df.empty:
-                st.write("No data available for the selected TMC code and date.")
+            st.subheader("Step 3: Select Files to Run Joins Between NPMRDS, TMC, and TMAS Data")
+            # Show all file pickers for Training/Testing
+            # TMCS Station file is already set after Step 1
+            st.write("**TMC Station File:**")
+            if 'tmc_station_file_tab1' in st.session_state:
+                st.write(f"Selected TMC Station File: {st.session_state['tmc_station_file_tab1']}")
             else:
-                # Display the direction (assumed to be unique for each TMC code)
-                direction = filtered_df['DIR'].iloc[0]
-                st.write(f"**Direction:** {direction}")
-                
-                # Prepare the data for visualization
-                filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
+                st.write("TMC Station file will be set after running Step 1.")
 
-                if 'VOL' in df_to_display.columns:
-                    # Case: 'VOL' column is present
-                    st.write("Comparing 'VOL' and 'Predicted_VOL'")
-                    avg_df = filtered_df.groupby('hour', as_index=False).agg({'VOL': 'mean', 'Predicted_VOL': 'mean'})
-                    fig = px.line(
-                        avg_df, 
-                        x='hour', 
-                        y=['VOL', 'Predicted_VOL'],
-                        labels={'value': 'Traffic Counts', 'variable': 'Legend', 'hour': 'Hour of Day'},
-                        title=f'Average Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
-                        markers=True
-                    )
-                    # Use container width
-                    st.plotly_chart(fig, use_container_width=True)
+            file_picker('NPMRDS All Data file', 'npmrds_all_file_tab2', button_key='npmrds_all_file_picker_tab1')
+            file_picker('NPMRDS Passenger Data file', 'npmrds_pass_file_tab2', button_key='npmrds_pass_file_picker_tab1')
+            file_picker('NPMRDS Truck Data file', 'npmrds_truck_file_tab2', button_key='npmrds_truck_file_picker_tab1')
+            file_picker('TMC ID file', 'tmc_id_file_tab2', button_key='tmc_id_file_picker_tab1')
 
-                    # Performance metrics for the selected day
-                    performance_metrics = setup_funcs.calculate_performance_metrics(filtered_df)
+        # Step 4: Choose the Output File Path
+        st.markdown('---') 
 
-                    if performance_metrics:
-                        st.header(f'Performance Metrics for {selected_date}')
-                        # Collect daily metrics into a dictionary
-                        daily_metrics_dict = {
-                            'Metric': [
-                                'Overall Percent Difference',
-                                'Daytime Percent Difference (7 AM - 7 PM)',
-                                'Nighttime Percent Difference (7 PM - 7 AM)'
-                            ],
-                            'Value': [
-                                f"{performance_metrics['Overall Percent Difference']:.2f}%",
-                                f"{performance_metrics['Daytime Percent Difference']:.2f}%",
-                                f"{performance_metrics['Nighttime Percent Difference']:.2f}%"
-                            ]
-                        }
+        st.subheader("Final Step: Choose the Output File Path and Press **Join and Save Data** button.")
+        
+        if 'output_folder_tab2' not in st.session_state:
+            st.session_state['output_folder_tab2'] = ''
+        if 'dataset_title_tab2' not in st.session_state:
+            st.session_state['dataset_title_tab2'] = ''
 
-                        # Convert to DataFrame and reset index
-                        daily_metrics_df = pd.DataFrame(daily_metrics_dict).reset_index(drop=True)
+        col1, col2 = st.columns([2, 3])
 
-                        # Display the daily metrics DataFrame
-                        st.table(
-                            daily_metrics_df.style
-                            .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
-                        )
+        with col1:
+            folder_picker('Choose Output Folder', 'output_folder_tab2', button_key='output_folder_picker_tab1')
+
+        with col2:
+            st.text_input("Enter a title for the output dataset:", value="NPMRDS_TMC_TMAS_US_SUBSET_20_22", key='dataset_title_tab2')
+
+        if st.button('**Join and Save Data**', key='join_and_save_button_tab1'):
+            if dataset_mode == "**Predict Traffic Counts:**":
+                required_keys = [
+                    'npmrds_all_file_tab2', 
+                    'npmrds_pass_file_tab2', 
+                    'npmrds_truck_file_tab2', 
+                    'tmc_id_file_tab2', 
+                    'output_folder_tab2', 
+                    'dataset_title_tab2'
+                ]
+            else:
+                required_keys = [
+                    'tmc_station_file_tab1',
+                    'npmrds_all_file_tab2', 
+                    'npmrds_pass_file_tab2', 
+                    'npmrds_truck_file_tab2', 
+                    'tmc_id_file_tab2', 
+                    'output_folder_tab2', 
+                    'dataset_title_tab2'
+                ]
+            
+            # Check if all required keys are present and not empty
+            missing_keys = [key for key in required_keys if key not in st.session_state or not st.session_state[key]]
+            if not missing_keys:
+                try:
+                    output_folder = st.session_state['output_folder_tab2']
+                    dataset_title = st.session_state['dataset_title_tab2']
+                    if not output_folder:
+                        st.error("Please select an output folder.")
+                    elif not dataset_title:
+                        st.error("Please enter a title for the dataset.")
+                    else:
+                        run_joins(dataset_mode)
+                        # Success message is handled inside run_joins
+                except Exception as e:
+                    st.error(f"An error occurred during the join process: {e}")
+            else:
+                if dataset_mode == "**Predict Traffic Counts:**":
+                    st.error("Please ensure all required NPMRDS files, output folder, and dataset title are provided before joining.")
                 else:
-                    # Case: No 'VOL' column present
-                    st.write("Displaying Predicted Traffic Counts")
-                    avg_df = filtered_df.groupby('hour', as_index=False).agg({'Predicted_VOL': 'mean'})
-                    fig = px.line(
-                        avg_df, 
-                        x='hour', 
-                        y='Predicted_VOL',
-                        labels={'Predicted_VOL': 'Predicted Traffic Counts', 'hour': 'Hour of Day'},
-                        title=f'Average Predicted Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+                    st.error("Please ensure all required NPMRDS files, TMC Station file, output folder, and dataset title are provided before joining.")
+
+    # GUI tab #2: Use a Traffic Counts Model
+    with tab2:
+        st.header('Predict Traffic Counts')
+        st.write("""
+        **Use the combined dataset generated in Tab 1 to predict traffic counts. The model version that came with the Github repository is selected below by default, or you can choose a different version if you trained your own model.**
+        """)
+    # Input column(s) and target column GUI buttons (previous single window)
+
+        # Set default model storage path if not already set
+        if 'model_storage_path' not in st.session_state:
+            st.session_state['model_storage_path'] = '..\\models\\'
+
+        # Create columns for layout
+        col1, col2 = st.columns([4, 1])
+
+        #with col1:
+        ai = module_ai.ai()
+
+        model_filename = ai.get_model_list(st.session_state['model_storage_path'])[0]
+        st.session_state['model_file'] = model_filename
+
+        # with col2:
+            # # Smaller button to change model storage location
+            # if st.button('Change Model Lookup Location', key='change_model_storage_location'):
+            #     # Use wxPython to select a folder
+            #     app = wx.App(False)
+            #     dialog = wx.DirDialog(None, 'Select Model Storage Location:', style=wx.DD_DEFAULT_STYLE)
+            #     if dialog.ShowModal() == wx.ID_OK:
+            #         dir_path = dialog.GetPath()
+            #         st.session_state['model_storage_path'] = dir_path
+            #         st.write(f"Selected Model Storage Location: {dir_path}")
+            #     else:
+            #         st.write("No Model Storage Location selected.")
+            #     dialog.Destroy()
+
+        # Get the list of model files from the current model storage path
+
+        # Display the selectbox for model files
+        # File picker for generated dataset path
+
+        file_picker('Upload Generated Dataset from Step 1 (.pkl)', 'raw_dataset_path', button_key='raw_dataset_picker_tab2', wildcard="Pickle files (*.pkl)|*.pkl")
+        
+        # model_filename = ai.get_model_list(st.session_state['model_storage_path'])[0] #st.selectbox(label='Choose a model file', options=list_of_model_files, key='model_filename_selectbox')
+
+        file_picker('Choose Model File', 'model_file', button_key='model_file_picker_tab2', wildcard="PT files (*.pt)|*.pt")
+
+        if 'raw_dataset_path' in st.session_state:
+            raw_dataset_path = st.session_state['raw_dataset_path']
+
+            try:
+                t_result_df, t_normalized_df, t_ai, t_source_data = setup(raw_dataset_path)
+                st.success("Dataset loaded successfully.")
+            except Exception as e:
+                st.error(f"Error loading the dataset: {e}")
+                t_result_df, t_normalized_df, t_ai, t_source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
+
+            if not t_result_df.empty and not t_normalized_df.empty and model_filename:
+                st.subheader("Final Step: Choose the Output File Path and Press **Run model and predict traffic counts** button.")
+
+                if 'output_folder_tab2' not in st.session_state:
+                    st.session_state['output_folder_tab3'] = ''
+
+                col1, col2 = st.columns([2, 3])
+
+                with col1:
+                    folder_picker('Choose Output Folder', 'output_folder_tab3', button_key='output_folder_picker_tab3')
+
+                if st.button('Run model and predict traffic counts', key='use_model_button_tab2'):
+                    st.write('Running loaded model on test dataset...')
+                    try:
+                        columns = [
+                            'tmc_code', 'measurement_tstamp', 'speed_All', 'data_density_All',
+                            'data_density_Pass', 'data_density_Truck', 'travel_time_seconds_All', 'start_latitude',
+                            'start_longitude', 'end_latitude', 'end_longitude', 'miles', 'aadt', 'urban_code',
+                            'thrulanes_unidir', 'f_system', 'route_sign', 'thrulanes', 'zip', 'DIR'
+                        ]
+                        columns.extend(t_source_data.calculated_columns)
+
+                        # Convert columns to numeric and handle errors if present
+                        for col in t_normalized_df.columns:
+                            try:
+                                t_normalized_df[col] = pd.to_numeric(t_normalized_df[col], errors='coerce')
+                            except Exception as e:
+                                print(f"Error converting column {col}: {e}")
+                        
+                        st.write(model_filename)
+                        answer_df = setup_funcs.use_model(t_ai, model_filename, t_normalized_df, columns, 'VOL')
+                        if answer_df.empty:
+                            st.write("Model or data was not properly loaded. Please check your inputs.")
+                        else:
+                            answer_df_merged = merge_normalized_and_raw_data(t_result_df, answer_df)
+                            output_file_path = os.path.join(st.session_state['output_folder_tab3'], 
+                                                            f"{os.path.splitext(os.path.basename(raw_dataset_path))[0]}_predictions.pkl")
+                            answer_df_merged.to_pickle(output_file_path)
+                            answer_df_merged.to_csv(output_file_path.replace('pkl', 'csv'), index=False)
+                            st.session_state['answer_df_merged'] = answer_df_merged
+                            st.success(f"DataFrame successfully output to location: **{output_file_path}** -- View Results in the **Results** Tab")
+                    except Exception as e:
+                        st.error(f"An error occurred while using the model: {e}")
+            else:
+                st.write("Please ensure both the model file and the generated dataset are selected.")
+
+    # Cache data preparation for the map
+    @st.cache_data
+    def prepare_map_data(df):
+        if 'start_latitude_norm' in df.columns and 'start_longitude_norm' in df.columns:
+            lat_col, lon_col = 'start_latitude_norm', 'start_longitude_norm'
+        elif 'start_latitude' in df.columns and 'start_longitude' in df.columns:
+            lat_col, lon_col = 'start_latitude', 'start_longitude'
+        else:
+            return None, None, None
+
+        return df, lat_col, lon_col
+
+    # Generate and cache the folium map
+    @st.cache_resource
+    def create_folium_station_map(df):
+        # Use a reduced dataset or sampling to minimize map complexity
+        sample_df = df[['start_latitude_norm', 'start_longitude_norm', 'tmc_code']].dropna().sample(500)  # Limit to 500 points
+
+        # Create a folium map centered on the USA
+        map_center = [39.8283, -98.5795]  # Approximate center of the USA
+        folium_map = folium.Map(location=map_center, zoom_start=4)
+
+        # Add points to the map
+        for _, row in sample_df.iterrows():
+            folium.Marker(
+                location=[row['start_latitude_norm'], row['start_longitude_norm']],
+                popup=row['tmc_code'],
+                icon=folium.Icon(color='blue', icon='info-sign')
+            ).add_to(folium_map)
+
+        return folium_map
+
+    # Extract unique TMC codes and dates for dropdowns
+    @st.cache_data
+    def get_unique_tmc_codes_and_dates(df):
+        tmc_codes = df['tmc_code'].unique()
+        dates = df['measurement_tstamp'].dt.date.unique()
+        return sorted(tmc_codes), sorted(dates)
+
+    # Cache the filtered DataFrame
+    @st.cache_data
+    def filter_data_by_tmc_and_date(df, selected_tmc, selected_date):
+        filtered_df = df[(df['tmc_code'] == selected_tmc) & (df['measurement_tstamp'].dt.date == selected_date)]
+        return filtered_df
+
+    # GUI tab #3: Results
+    with tab3:
+        st.header('Traffic Counts Prediction Results')
+        
+        st.subheader("Upload a Predictions File")
+        if st.button('Choose Predictions File', key='choose_predictions_file_tab3'):
+            app = wx.App(False)
+            dialog = wx.FileDialog(None, 'Select a _predictions.pkl File:', wildcard="Pickle files (*.pkl)|*.pkl", style=wx.FD_OPEN)
+            if dialog.ShowModal() == wx.ID_OK:
+                uploaded_file_path = dialog.GetPath()
+                st.session_state['uploaded_predictions_path'] = uploaded_file_path
+                st.write(f"Selected Predictions File: {uploaded_file_path}\nAttempting to Load...")
+            else:
+                st.write("No Predictions File selected.")
+            dialog.Destroy()
+        
+        if 'uploaded_predictions_path' in st.session_state:
+            uploaded_file_path = st.session_state['uploaded_predictions_path']
+            try:
+                uploaded_df = pd.read_pickle(uploaded_file_path)
+                st.session_state['uploaded_df'] = uploaded_df
+                st.success("Uploaded predictions file loaded successfully.")
+            except Exception as e:
+                st.error(f"Error loading the uploaded file: {e}")
+
+        df_to_display = None
+
+        if 'answer_df_merged' in st.session_state:
+            df_to_display = st.session_state['answer_df_merged']
+
+        if 'uploaded_df' in st.session_state:
+            df_to_display = st.session_state['uploaded_df']
+
+        if df_to_display is not None and not df_to_display.empty:
+            # Calculate overall performance metrics for the entire dataset
+            if 'VOL' in df_to_display.columns:
+                overall_performance_metrics = setup_funcs.calculate_performance_metrics(df_to_display)
+            else:
+                overall_performance_metrics = setup_funcs.calculate_data_metrics(df_to_display)
+
+            # Display overall performance metrics in a table
+            st.header('Overall Performance Metrics')
+
+            if 'VOL' in df_to_display.columns:
+                # Time of maximum difference and TMC code
+                max_diff_index = (df_to_display['VOL'] - df_to_display['Predicted_VOL']).abs().idxmax()
+                max_diff_row = df_to_display.loc[max_diff_index]
+                
+                # Collect metrics into a dictionary
+                metrics_dict = {
+                    'Metric': [
+                        'Overall Percent Difference',
+                        'Daytime Percent Difference (7 AM - 7 PM)',
+                        'Nighttime Percent Difference (7 PM - 7 AM)',
+                        'Number of zeros in VOL',
+                        'Number of zeros in Predicted_VOL',
+                        'Number of rows with zero in either VOL or Predicted_VOL',
+                        'Average Absolute Difference for zeros',
+                        'Median Absolute Difference for zeros',
+                        'Time of Maximum Difference',
+                        'TMC Code of Maximum Difference'
+                    ],
+                    'Value': [
+                        f"{overall_performance_metrics['Overall Percent Difference']:.2f}%",
+                        f"{overall_performance_metrics['Daytime Percent Difference']:.2f}%",
+                        f"{overall_performance_metrics['Nighttime Percent Difference']:.2f}%",
+                        overall_performance_metrics['Zeros in VOL'],
+                        overall_performance_metrics['Zeros in Predicted_VOL'],
+                        overall_performance_metrics['Rows with zeros'],
+                        f"{overall_performance_metrics['Average Absolute Difference (zeros)']:.2f}",
+                        f"{overall_performance_metrics['Median Absolute Difference (zeros)']:.2f}",
+                        max_diff_row['measurement_tstamp'],
+                        max_diff_row['tmc_code']
+                    ]
+                }
+
+                # Convert to DataFrame and reset index
+                metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
+
+                # Display the metrics DataFrame
+                st.table(
+                    metrics_df.style
+                    .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                )
+
+                # Percentage within Error Thresholds plot
+                if 'Thresholds' in overall_performance_metrics and 'Overall Percentage Within' in overall_performance_metrics:
+                    st.header('Percentage Within Error Thresholds (Excluding Zeros)')
+                    fig_overall = px.line(
+                        x=overall_performance_metrics['Thresholds'], 
+                        y=overall_performance_metrics['Overall Percentage Within'],
+                        labels={'x': 'Error Threshold (%)', 'y': 'Percentage of Data Points Within Threshold (%)'},
+                        title='Percentage of Data Points Within Error Thresholds (Excluding Zeros)',
                         markers=True
                     )
                     # Use container width
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig_overall, use_container_width=True)
+            else:
+                # Collect metrics into a dictionary
+                metrics_dict = {
+                    'Metric': [
+                        'Average Morning Peak (6 AM - 9 AM)',
+                        'Average Evening Peak (4 PM - 7 PM)'
+                    ],
+                    'Value': [
+                        f"{overall_performance_metrics['Average Morning Peak']:.2f}",
+                        f"{overall_performance_metrics['Average Evening Peak']:.2f}"
+                    ]
+                }
 
-                    # Data metrics for the selected day
-                    data_metrics = setup_funcs.calculate_data_metrics(filtered_df)
-                    if data_metrics:
-                        st.header(f'Metrics for {selected_date}')
-                        # Collect data metrics into a dictionary
-                        data_metrics_dict = {
-                            'Metric': [
-                                'Average Morning Peak (6 AM - 9 AM)',
-                                'Average Evening Peak (4 PM - 7 PM)'
-                            ],
-                            'Value': [
-                                f"{data_metrics['Average Morning Peak']:.2f}",
-                                f"{data_metrics['Average Evening Peak']:.2f}"
-                            ]
-                        }
+                # Convert to DataFrame and reset index
+                metrics_df = pd.DataFrame(metrics_dict).reset_index(drop=True)
 
-                        # Convert to DataFrame and reset index
-                        data_metrics_df = pd.DataFrame(data_metrics_dict).reset_index(drop=True)
+                # Display the metrics DataFrame
+                st.table(
+                    metrics_df.style
+                    .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                )
 
-                        # Display the data metrics DataFrame
-                        st.table(
-                            data_metrics_df.style
-                            .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+            st.header('Visualize Predictions')
+
+            # Extract unique TMC codes for dropdown
+            @st.cache_data
+            def get_unique_tmc_codes(df):
+                tmc_codes = df['tmc_code'].unique()
+                return sorted(tmc_codes)
+
+            # Cache function to get dates for a given TMC code
+            @st.cache_data
+            def get_dates_for_tmc(df, selected_tmc):
+                dates = df[df['tmc_code'] == selected_tmc]['measurement_tstamp'].dt.date.unique()
+                return sorted(dates)
+
+            # Create dropdown for TMC codes
+            tmc_codes = get_unique_tmc_codes(df_to_display)
+            selected_tmc = st.selectbox('Select TMC Code', tmc_codes)
+
+            # After TMC code is selected, get available dates
+            if selected_tmc:
+                dates = get_dates_for_tmc(df_to_display, selected_tmc)
+                if dates:
+                    selected_date = st.selectbox('Select Date', dates)
+                else:
+                    st.write("No dates available for the selected TMC code.")
+                    selected_date = None
+            else:
+                selected_date = None
+
+            # Proceed only if a date is selected
+            if selected_date is not None:
+                # Filter the data for the selected TMC code and date
+                filtered_df = filter_data_by_tmc_and_date(df_to_display, selected_tmc, selected_date)
+
+                if filtered_df.empty:
+                    st.write("No data available for the selected TMC code and date.")
+                else:
+                    # Display the direction (assumed to be unique for each TMC code)
+                    direction = filtered_df['DIR'].iloc[0]
+                    st.write(f"**Direction:** {direction}")
+                    
+                    # Prepare the data for visualization
+                    filtered_df['hour'] = filtered_df['measurement_tstamp'].dt.hour
+
+                    if 'VOL' in df_to_display.columns:
+                        # Case: 'VOL' column is present
+                        st.write("Comparing 'VOL' and 'Predicted_VOL'")
+                        avg_df = filtered_df.groupby('hour', as_index=False).agg({'VOL': 'mean', 'Predicted_VOL': 'mean'})
+                        fig = px.line(
+                            avg_df, 
+                            x='hour', 
+                            y=['VOL', 'Predicted_VOL'],
+                            labels={'value': 'Traffic Counts', 'variable': 'Legend', 'hour': 'Hour of Day'},
+                            title=f'Average Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+                            markers=True
                         )
+                        # Use container width
+                        st.plotly_chart(fig, use_container_width=True)
 
-        else:
-            st.write("Please select a date to proceed.")
+                        # Performance metrics for the selected day
+                        performance_metrics = setup_funcs.calculate_performance_metrics(filtered_df)
 
-        # Generate and display the folium map
-        if df_to_display is not None and not df_to_display.empty:
-            if 'station_map' not in st.session_state:
-                st.session_state['station_map'] = create_folium_station_map(df_to_display)
+                        if performance_metrics:
+                            st.header(f'Performance Metrics for {selected_date}')
+                            # Collect daily metrics into a dictionary
+                            daily_metrics_dict = {
+                                'Metric': [
+                                    'Overall Percent Difference',
+                                    'Daytime Percent Difference (7 AM - 7 PM)',
+                                    'Nighttime Percent Difference (7 PM - 7 AM)'
+                                ],
+                                'Value': [
+                                    f"{performance_metrics['Overall Percent Difference']:.2f}%",
+                                    f"{performance_metrics['Daytime Percent Difference']:.2f}%",
+                                    f"{performance_metrics['Nighttime Percent Difference']:.2f}%"
+                                ]
+                            }
 
-            st.header('Map of Stations in Dataset')
-            # Adjust the width to use the full container width
-            st_folium(st.session_state['station_map'], width='100%', height=500)
-        else:
-            st.write("No data available to display the map.")
+                            # Convert to DataFrame and reset index
+                            daily_metrics_df = pd.DataFrame(daily_metrics_dict).reset_index(drop=True)
 
-# GUI tab #4: Train Model
-with tab4:
-    st.header('Train a Traffic Counts Model')
-    
-    if st.button('Choose Source Data File', key='train_model_source_file_tab4'):
-        app = wx.App(False)
-        dialog = wx.FileDialog(None, 'Select a File:', style=wx.FD_OPEN)
-        if dialog.ShowModal() == wx.ID_OK:
-            file_path = dialog.GetPath()
-            try:
-                result_df, normalized_df, ai, source_data = setup(file_path)
-                st.session_state['train_model_source_file_tab4'] = file_path
-                st.success("Source data file loaded successfully.")
-            except Exception as e:
-                st.error(f"Error loading the source data file: {e}")
+                            # Display the daily metrics DataFrame
+                            st.table(
+                                daily_metrics_df.style
+                                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                            )
+                    else:
+                        # Case: No 'VOL' column present
+                        st.write("Displaying Predicted Traffic Counts")
+                        avg_df = filtered_df.groupby('hour', as_index=False).agg({'Predicted_VOL': 'mean'})
+                        fig = px.line(
+                            avg_df, 
+                            x='hour', 
+                            y='Predicted_VOL',
+                            labels={'Predicted_VOL': 'Predicted Traffic Counts', 'hour': 'Hour of Day'},
+                            title=f'Average Predicted Traffic Counts for TMC Code {selected_tmc} on {selected_date}',
+                            markers=True
+                        )
+                        # Use container width
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        # Data metrics for the selected day
+                        data_metrics = setup_funcs.calculate_data_metrics(filtered_df)
+                        if data_metrics:
+                            st.header(f'Metrics for {selected_date}')
+                            # Collect data metrics into a dictionary
+                            data_metrics_dict = {
+                                'Metric': [
+                                    'Average Morning Peak (6 AM - 9 AM)',
+                                    'Average Evening Peak (4 PM - 7 PM)'
+                                ],
+                                'Value': [
+                                    f"{data_metrics['Average Morning Peak']:.2f}",
+                                    f"{data_metrics['Average Evening Peak']:.2f}"
+                                ]
+                            }
+
+                            # Convert to DataFrame and reset index
+                            data_metrics_df = pd.DataFrame(data_metrics_dict).reset_index(drop=True)
+
+                            # Display the data metrics DataFrame
+                            st.table(
+                                data_metrics_df.style
+                                .set_properties(**{'font-weight': 'bold'}, subset=['Metric'])
+                            )
+
+            else:
+                st.write("Please select a date to proceed.")
+
+            # Generate and display the folium map
+            if df_to_display is not None and not df_to_display.empty:
+                if 'station_map' not in st.session_state:
+                    st.session_state['station_map'] = create_folium_station_map(df_to_display)
+
+                st.header('Map of Stations in Dataset')
+                # Adjust the width to use the full container width
+                st_folium(st.session_state['station_map'], width='100%', height=500)
+            else:
+                st.write("No data available to display the map.")
+
+    # GUI tab #4: Train Model
+    with tab4:
+        st.header('Train a Traffic Counts Model')
+        st.write('''
+                Use this tab to train your own version of a traffic counts model using localized traffic count data that you have joined to NPMRDS speed data.
+                
+                This is for advanced users, and should only be used if you have access to more up-to-date or accurate traffic counts data.
+                ''')        
+        if st.button('Choose Source Data File', key='train_model_source_file_tab4'):
+            app = wx.App(False)
+            dialog = wx.FileDialog(None, 'Select a File:', style=wx.FD_OPEN)
+            if dialog.ShowModal() == wx.ID_OK:
+                file_path = dialog.GetPath()
+                try:
+                    result_df, normalized_df, ai, source_data = setup(file_path)
+                    st.session_state['train_model_source_file_tab4'] = file_path
+                    st.success("Source data file loaded successfully.")
+                except Exception as e:
+                    st.error(f"Error loading the source data file: {e}")
+                    result_df, normalized_df, ai, source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
+            else:
+                st.write("No source data file selected.")
                 result_df, normalized_df, ai, source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
-        else:
-            st.write("No source data file selected.")
-            result_df, normalized_df, ai, source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
-        dialog.Destroy()
-    elif 'train_model_source_file_tab4' not in st.session_state:
-        result_df = pd.DataFrame()
-        normalized_df = pd.DataFrame()
-        ai = module_ai.ai()
-        source_data = module_data.data()
-    else:
-        file_path = st.session_state.get('train_model_source_file_tab4', None)
-        if file_path:
-            try:
-                result_df, normalized_df, ai, source_data = setup(file_path)
-                st.success("Source data file loaded successfully.")
-            except Exception as e:
-                st.error(f"Error loading the source data file: {e}")
-                result_df, normalized_df, ai, source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
-        else:
+            dialog.Destroy()
+        elif 'train_model_source_file_tab4' not in st.session_state:
             result_df = pd.DataFrame()
             normalized_df = pd.DataFrame()
             ai = module_ai.ai()
             source_data = module_data.data()
-
-    if 'result_df' in st.session_state and not st.session_state['result_df'].empty:
-        st.header('Input Data')
-        st.dataframe(st.session_state['result_df'].head(50))
-    else:
-        st.header('Input Data')
-        st.write("No data loaded.")
-
-    if 'normalized_df' in st.session_state and not st.session_state['normalized_df'].empty:
-        st.header('Input Data Normalized for AI Training')
-        st.dataframe(st.session_state['normalized_df'].head(50))
-    else:
-        st.header('Input Data Normalized for AI Training')
-        st.write("No normalized data available.")
-
-    if 'source_data' in st.session_state:
-        cols1 = st.session_state['source_data'].features_training_set
-        in_cols = st.multiselect(
-            label='Choose input column(s) (select one or more):', 
-            options=cols1, 
-            default=st.session_state['source_data'].features_training_set
-        )
-    else:
-        in_cols = []
-
-    if 'normalized_df' in st.session_state and not st.session_state['normalized_df'].empty:
-        cols2 = st.session_state['normalized_df'].columns
-        default_target = st.session_state['source_data'].features_target if 'source_data' in st.session_state else (cols2[0] if len(cols2) > 0 else None)
-        target_col_index = find_string_index(cols2, default_target) if default_target else 0
-        target_col = st.selectbox(
-            label='Choose target column (select only one):', 
-            options=cols2, 
-            index=target_col_index if target_col_index is not False else 0
-        )
-    else:
-        target_col = None
-
-    if st.button('Train Model', key='train_model_button_tab4'):
-        if 'ai' in st.session_state and 'normalized_df' in st.session_state and in_cols and target_col:
-            st.write('Model training started...')
-            try:
-                result = setup_funcs.train_model(
-                    st.session_state['ai'], 
-                    st.session_state['normalized_df'], 
-                    in_cols, 
-                    target_col
-                )
-                st.write(result)
-                st.success("Model training completed successfully.")
-            except Exception as e:
-                st.error(f"An error occurred during model training: {e}")
         else:
-            st.error("Please load the data and select input columns and target column before training the model.")
+            file_path = st.session_state.get('train_model_source_file_tab4', None)
+            if file_path:
+                try:
+                    result_df, normalized_df, ai, source_data = setup(file_path)
+                    st.success("Source data file loaded successfully.")
+                except Exception as e:
+                    st.error(f"Error loading the source data file: {e}")
+                    result_df, normalized_df, ai, source_data = pd.DataFrame(), pd.DataFrame(), module_ai.ai(), module_data.data()
+            else:
+                result_df = pd.DataFrame()
+                normalized_df = pd.DataFrame()
+                ai = module_ai.ai()
+                source_data = module_data.data()
 
-# GUI tab #5: About
-with tab5:
-    st.header('About')
-    
-    st.write('**Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.**')
-    st.write('**Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf).**')
-    st.write('**Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov.**')
+        if 'result_df' in st.session_state and not st.session_state['result_df'].empty:
+            st.header('Input Data')
+            st.dataframe(st.session_state['result_df'].head(50))
+        else:
+            st.header('Input Data')
+            st.write("No data loaded.")
+
+        if 'normalized_df' in st.session_state and not st.session_state['normalized_df'].empty:
+            st.header('Input Data Normalized for AI Training')
+            st.dataframe(st.session_state['normalized_df'].head(50))
+        else:
+            st.header('Input Data Normalized for AI Training')
+            st.write("No normalized data available.")
+
+        if 'source_data' in st.session_state:
+            cols1 = st.session_state['source_data'].features_training_set
+            in_cols = st.multiselect(
+                label='Choose input column(s) (select one or more):', 
+                options=cols1, 
+                default=st.session_state['source_data'].features_training_set
+            )
+        else:
+            in_cols = []
+
+        if 'normalized_df' in st.session_state and not st.session_state['normalized_df'].empty:
+            cols2 = st.session_state['normalized_df'].columns
+            default_target = st.session_state['source_data'].features_target if 'source_data' in st.session_state else (cols2[0] if len(cols2) > 0 else None)
+            target_col_index = find_string_index(cols2, default_target) if default_target else 0
+            target_col = st.selectbox(
+                label='Choose target column (select only one):', 
+                options=cols2, 
+                index=target_col_index if target_col_index is not False else 0
+            )
+        else:
+            target_col = None
+
+        if st.button('Train Model', key='train_model_button_tab4'):
+            if 'ai' in st.session_state and 'normalized_df' in st.session_state and in_cols and target_col:
+                st.write('Model training started...')
+                try:
+                    result = setup_funcs.train_model(
+                        st.session_state['ai'], 
+                        st.session_state['normalized_df'], 
+                        in_cols, 
+                        target_col
+                    )
+                    st.write(result)
+                    st.success("Model training completed successfully.")
+                except Exception as e:
+                    st.error(f"An error occurred during model training: {e}")
+            else:
+                st.error("Please load the data and select input columns and target column before training the model.")
+
+    # GUI tab #5: About
+    with tab5:
+        st.header('About')
+        
+        st.write('**Visit our [GitHub](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/tree/main) for more information.**')
+        st.write('**Download our [Readme](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/resources/readme.pdf).**')
+        st.write('**Questions? Contact William.Chupp@dot.gov or Eric.Englin@dot.gov.**')
