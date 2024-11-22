@@ -302,12 +302,3 @@ This project is funded by the U.S. DOT, ITS JPO under IAA HWE3A122. Any opinions
 ### About
 
 This repository provides code for using ML methods to join national traffic datasets. One of these traffic data sets measure speed, and the other measures traffic volumes.
-
-
-# 10. README Version History
-
-*Table 1. README Version History*
-
-<img src="resources/ReadmeVersionHistory.PNG" width="450">
-
-
