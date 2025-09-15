@@ -262,7 +262,7 @@ This project is licensed under the Creative Commons 1.0 Universal (CC0 1.0) Lice
 
 # 7. Contributing to the Code
 
-Please read [Contributing.md](https://github.com/ITSJPO-TRIMS/R29-MobilityTrafficCounts/blob/main/Contributing.MD) for details on our Code of Conduct, the process for submitting pull requests to us, and how contributions will be released.
+Please read [Contributing.md](https://github.com/ROADII-Lab/R29-MobilityTrafficCounts/blob/main/Contributing.md) for details on our Code of Conduct, the process for submitting pull requests to us, and how contributions will be released.
 
 
 # 8. Contact Information
