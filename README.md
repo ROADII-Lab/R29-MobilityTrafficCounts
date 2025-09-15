@@ -67,7 +67,7 @@ Figure 4 shows U.S. Census 2020 Population Density by County as an example of th
 
     The MCPS tool attempts to ease the burden on planning and transportation agencies by providing a simple neural network model to output historical traffic count estimates on roadways where there are no continuous count data available, as is the case for most National Highway System network links. The intended user base includes state and local agencies looking to produce and use more complete traffic speed and traffic volume datasets. Applications of these resulting datasets and the code in this repository include highway planning projects and highway management projects, as well as future traffic forecasting efforts.
 
-- **Length of the project:** The code base is currently in a stable state. The ROADII Team may push updates irregularly as new data become available that might be used to update the model
+- **Length of the project:** The code base is currently in a stable state. 
 
 # 2. Prerequisites
 
@@ -248,9 +248,9 @@ The geographic region that the algorithms use to train the model is determined b
 
 # 5. Version History and Retention
 
-**Status:** This project is in active development phase. 
+**Status:** This project is complete. 
 
-**Release Frequency:** This project will be updated when there are stable developments. This will be approximately every month. 
+**Release Frequency:** This project is complete. 
 
 **Retention:** This project will likely remain publicly accessible indefinitely. 
 
